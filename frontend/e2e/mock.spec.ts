@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-test('玻璃装饰不阻挡导航，背景失败降级并尊重减少动态效果', async ({page}) => {
+test('页面交互不阻挡导航，背景失败降级', async ({page}) => {
   let backgrounds = 0
   await page.route('https://api.yppp.net/api.php', async route => {
     backgrounds += 1
@@ -8,7 +8,7 @@ test('玻璃装饰不阻挡导航，背景失败降级并尊重减少动态效�
   })
   await page.goto('/')
   await expect(page.locator('.wallpaper img')).toBeVisible()
-  await expect(page.locator('.glass-material-lens')).toHaveCount(1)
+  await expect(page.locator('.topbar')).toBeVisible()
   await page.keyboard.press('Tab')
   await expect(page.getByRole('link', {name: '跳转到内容'})).toBeFocused()
   await page.keyboard.press('Enter')
@@ -19,7 +19,6 @@ test('玻璃装饰不阻挡导航，背景失败降级并尊重减少动态效�
   await page.keyboard.press('Escape')
   expect(backgrounds).toBe(1)
   await page.emulateMedia({reducedMotion: 'reduce'})
-  await expect(page.locator('.glass-material-lens')).toHaveCount(0)
   await expect(page.getByRole('button', {name: '切换实例'})).toBeVisible()
   await page.unroute('https://api.yppp.net/api.php')
   await page.route('https://api.yppp.net/api.php', route => route.abort())

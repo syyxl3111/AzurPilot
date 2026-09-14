@@ -1,6 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { AlertCircle, LoaderCircle, X } from 'lucide-react'
-import { GlassMaterial } from './GlassMaterial'
 import type { Status } from '../api/types'
 
 export function StatusBadge({status}: {status: Status}) {
@@ -22,5 +21,5 @@ export function Modal({title, children, onClose}: {title: string; children: Reac
   </dialog>
 }
 export function PageTitle({title, actions}: {title: string; actions?: ReactNode}) {
-  return <div className="page-title"><h1>{title}</h1>{actions && <div className="title-actions"><GlassMaterial/>{actions}</div>}</div>
+  return <div className="page-title"><h1>{title}</h1>{actions && <div className="title-actions">{actions}</div>}</div>
 }

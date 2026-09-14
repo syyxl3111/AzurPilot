@@ -4,7 +4,6 @@ import { ArrowRight, ChartNoAxesCombined, Compass, LayoutDashboard, House, Downl
 import { api } from '../api/client'
 import { useApp, useConnection } from './context'
 import { ErrorBox, Loading, Modal } from '../components/ui'
-import { GlassMaterial } from '../components/GlassMaterial'
 import { InstanceSwitcher } from '../components/InstanceSwitcher'
 import { RightRail } from '../components/RightRail'
 import { TaskNav } from '../components/TaskNav'
@@ -100,7 +99,7 @@ export function App() {
       </nav>
       {instance && <TaskNav/>}
     </aside>
-    <div className="main-shell"><header className="topbar"><GlassMaterial/><button className="mobile-toggle icon-button" aria-label="打开导航" onClick={() => setMobileOpen(true)}><Menu size={20}/></button>
+    <div className="main-shell"><header className="topbar"><button className="mobile-toggle icon-button" aria-label="打开导航" onClick={() => setMobileOpen(true)}><Menu size={20}/></button>
       <div className="breadcrumb"><Link to="/">主页</Link>{instance ? <><span>/</span><InstanceSwitcher onCreate={() => setCreating(true)}/>{currentTask ? <><span>/</span><Link to={`${base}/task/Alas`}>任务配置</Link><span>/</span><Link className="breadcrumb-current" to={`${base}/task/${currentTask}`}><strong>{t(`Task.${currentTask}.name`)}</strong></Link></> : location.pathname.endsWith('/statistics') && <><span>/</span><strong>资源统计</strong></>}</> : activeSection !== '主页' && <><span>/</span><strong>{activeSection}</strong></>}</div>
       <div className="topbar-right">{update.data?.available && <Link className="update-notice" to="/updater"><Download size={14}/><span>新版本可用</span></Link>}{instance && <button className={`rail-toggle icon-button ${!railCollapsed ? 'active' : ''}`} aria-label={railCollapsed ? '展开调度与任务' : '收起调度与任务'} title={railCollapsed ? '展开调度与任务' : '收起调度与任务'} onClick={() => { if (window.innerWidth <= 950) { setRailOpen(prev => !prev) } else { toggleRailCollapse() } }}>{railCollapsed ? <PanelRightOpen size={18}/> : <PanelRightClose size={18}/>}</button>}<span className="connection-label" title={connection === 'ready' ? '已连接' : '连接中'}>{connection === 'ready' ? <Wifi size={14}/> : <WifiOff size={14}/>}<span>{connection === 'ready' ? '已连接' : '连接中'}</span></span></div></header>
       {connection !== 'ready' && <div className="connection-banner" role="status"><WifiOff size={16}/>正在连接后端，配置输入会保留并在重连后保存；运行操作暂不可用。</div>}

@@ -49,7 +49,6 @@
 .task-group-arrow {flex-shrink: 0; color: var(--muted); transition: transform .15s ease, color .15s ease}
 .task-group-button:hover .task-group-arrow, .task-group-button.expanded .task-group-arrow {color: var(--accent); transform: translateX(2px)}
 .task-submenu-flyout {position: absolute; left: calc(100% + 19px); width: 210px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; box-shadow: 0 10px 30px #132b4822, 0 2px 8px #132b4810; padding: 6px; z-index: 50; height: auto; max-height: calc(var(--viewport-height) - 32px); overflow-y: auto; display: flex; flex-direction: column; gap: 2px; animation: submenu-flyout-in .15s cubic-bezier(0.16, 1, 0.3, 1)}
-[data-theme='dark'] .task-submenu-flyout {box-shadow: 0 12px 35px #050b1260, 0 2px 10px #050b1240}
 @keyframes submenu-flyout-in {from {opacity: 0; transform: translateX(-6px)} to {opacity: 1; transform: translateX(0)}}
 .task-submenu-list {display: flex; flex-direction: column; gap: 2px}
 .task-submenu-item {display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; font-size: 11px; color: #728290; line-height: 1.4; transition: all .12s ease}
