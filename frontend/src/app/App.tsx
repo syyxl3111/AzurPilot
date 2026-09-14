@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ArrowRight, CalendarClock, ChartNoAxesCombined, Compass, LayoutDashboard, House, Download, Menu, Settings2, Wifi, WifiOff, X } from 'lucide-react'
+import { ArrowRight, ChartNoAxesCombined, Compass, LayoutDashboard, House, Download, Menu, PanelRightClose, PanelRightOpen, Settings2, Wifi, WifiOff, X } from 'lucide-react'
 import { api } from '../api/client'
 import { useApp, useConnection } from './context'
 import { ErrorBox, Loading, Modal } from '../components/ui'
@@ -64,12 +64,24 @@ export function App() {
   const [creating, setCreating] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [railOpen, setRailOpen] = useState(false)
+  const [railCollapsed, setRailCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('azurpilot_rail_collapsed') === 'true' } catch { return false }
+  })
   const update = useUpdater()
   const current = instances.find(item => item.name === instance)
   const base = instance ? `/i/${instance}` : ''
   const taskMatch = location.pathname.match(/\/task\/([^/]+)/)
   const currentTask = taskMatch ? taskMatch[1] : null
   const activeSection = location.pathname.includes('/task/') ? '任务配置' : location.pathname.endsWith('/statistics') ? '资源统计' : location.pathname.endsWith('/settings') ? '系统设置' : location.pathname.endsWith('/updater') ? '更新器' : instance ? instance : '主页'
+
+  function toggleRailCollapse() {
+    setRailCollapsed(prev => {
+      const next = !prev
+      try { localStorage.setItem('azurpilot_rail_collapsed', String(next)) } catch {}
+      return next
+    })
+  }
+
   useEffect(() => {
     if (connection === 'ready' && instancesLoaded && instance && !instances.some(item => item.name === instance)) {
       navigate('/', {replace: true})
@@ -81,7 +93,7 @@ export function App() {
     void api.request('events.subscribe', {instance: instance ?? null, topics: instance ? previewEnabled ? ['instances', 'overview', 'logs', 'preview'] : ['instances', 'overview', 'logs'] : ['instances']}).catch(error => notify(error.message, true))
   }, [instance, connection, notify, previewEnabled])
   if (connection === 'auth') return <Login/>
-  return <div className={`app-shell ${instance ? 'with-rail' : ''} ${mobileOpen ? 'mobile-open' : ''} ${railOpen ? 'rail-open' : ''}`}>
+  return <div className={`app-shell ${instance ? 'with-rail' : ''} ${railCollapsed ? 'rail-collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''} ${railOpen ? 'rail-open' : ''}`}>
     <a className="skip-link" href="#main-content" onClick={event => {event.preventDefault(); document.getElementById('main-content')?.focus()}}>跳转到内容</a><aside className="sidebar"><div className="sidebar-brand"><Link to="/" className="brand-title" aria-label="AzurPilot 主页"><img src="/azurpilot.svg" alt="" className="brand-logo"/><span>AzurPilot</span></Link><button className="mobile-close icon-button" aria-label="关闭导航" onClick={() => setMobileOpen(false)}><X size={18}/></button></div>
       <nav className="primary-nav" aria-label="主导航">
         {instance ? <><NavLink to={`${base}/overview`}><LayoutDashboard size={17}/>运行总览</NavLink><NavLink to={`${base}/statistics`}><ChartNoAxesCombined size={17}/>资源统计</NavLink></> : <><NavLink to="/" end><House size={17}/>主页</NavLink><NavLink to="/updater"><Download size={17}/>更新器{update.data?.available && <span className="tiny-dot teal"/>}</NavLink><NavLink to="/settings"><Settings2 size={17}/>系统设置</NavLink></>}
@@ -90,11 +102,13 @@ export function App() {
     </aside>
     <div className="main-shell"><header className="topbar"><GlassMaterial/><button className="mobile-toggle icon-button" aria-label="打开导航" onClick={() => setMobileOpen(true)}><Menu size={20}/></button>
       <div className="breadcrumb"><Link to="/">主页</Link>{instance ? <><span>/</span><InstanceSwitcher onCreate={() => setCreating(true)}/>{currentTask ? <><span>/</span><Link to={`${base}/task/Alas`}>任务配置</Link><span>/</span><Link className="breadcrumb-current" to={`${base}/task/${currentTask}`}><strong>{t(`Task.${currentTask}.name`)}</strong></Link></> : location.pathname.endsWith('/statistics') && <><span>/</span><strong>资源统计</strong></>}</> : activeSection !== '主页' && <><span>/</span><strong>{activeSection}</strong></>}</div>
-      <div className="topbar-right">{update.data?.available && <Link className="update-notice" to="/updater"><Download size={14}/><span>新版本可用</span></Link>}{instance && <button className="mobile-rail-toggle icon-button" aria-label="打开调度与任务" onClick={() => setRailOpen(true)}><CalendarClock size={18}/></button>}<span className="connection-label" title={connection === 'ready' ? '已连接' : '连接中'}>{connection === 'ready' ? <Wifi size={14}/> : <WifiOff size={14}/>}<span>{connection === 'ready' ? '已连接' : '连接中'}</span></span></div></header>
+      <div className="topbar-right">{update.data?.available && <Link className="update-notice" to="/updater"><Download size={14}/><span>新版本可用</span></Link>}{instance && <button className={`rail-toggle icon-button ${!railCollapsed ? 'active' : ''}`} aria-label={railCollapsed ? '展开调度与任务' : '收起调度与任务'} title={railCollapsed ? '展开调度与任务' : '收起调度与任务'} onClick={() => { if (window.innerWidth <= 950) { setRailOpen(prev => !prev) } else { toggleRailCollapse() } }}>{railCollapsed ? <PanelRightOpen size={18}/> : <PanelRightClose size={18}/>}</button>}<span className="connection-label" title={connection === 'ready' ? '已连接' : '连接中'}>{connection === 'ready' ? <Wifi size={14}/> : <WifiOff size={14}/>}<span>{connection === 'ready' ? '已连接' : '连接中'}</span></span></div></header>
       {connection !== 'ready' && <div className="connection-banner" role="status"><WifiOff size={16}/>正在连接后端，配置输入会保留并在重连后保存；运行操作暂不可用。</div>}
-      <main id="main-content" tabIndex={-1}>{!schema || ((instance || location.pathname === '/') && !instancesLoaded) ? <Loading/> : !instance || current ? <Outlet context={update} key={instance ?? 'home'}/> : <Loading/>}</main>
+      <div className="workspace-body">
+        <main id="main-content" tabIndex={-1}>{!schema || ((instance || location.pathname === '/') && !instancesLoaded) ? <Loading/> : !instance || current ? <Outlet context={update} key={instance ?? 'home'}/> : <Loading/>}</main>
+        {instance && <RightRail instance={instance} collapsed={railCollapsed} onToggleCollapse={toggleRailCollapse} onMobileClose={() => setRailOpen(false)}/>}
+      </div>
     </div>
-    {instance && <RightRail instance={instance} onMobileClose={() => setRailOpen(false)}/>}
     {creating && <CreateInstance onClose={() => setCreating(false)}/>}
   </div>
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarClock, ChevronRight, CirclePlay, Clock3, Hourglass, ListTodo, Play, Square, TriangleAlert, X } from 'lucide-react'
+import { CalendarClock, ChevronLeft, ChevronRight, CirclePlay, Clock3, Hourglass, ListTodo, Play, Square, TriangleAlert, X } from 'lucide-react'
 import { api } from '../api/client'
 import type { Overview } from '../api/types'
 import { useApp, useConnection } from '../app/context'
@@ -18,7 +18,17 @@ const taskGroups = [
   {state: 'waiting', label: '等待中', empty: '当前没有等待中的任务', icon: Hourglass},
 ] as const
 
-export function RightRail({instance, onMobileClose}: {instance: string; onMobileClose: () => void}) {
+export function RightRail({
+  instance,
+  collapsed = false,
+  onToggleCollapse,
+  onMobileClose,
+}: {
+  instance: string
+  collapsed?: boolean
+  onToggleCollapse?: () => void
+  onMobileClose: () => void
+}) {
   const connection = useConnection()
   const {notify} = useApp()
   const [data, setData] = useState<Overview>()
@@ -58,7 +68,17 @@ export function RightRail({instance, onMobileClose}: {instance: string; onMobile
   const pending = data?.tasks.filter(task => task.state === 'pending').length ?? 0
   const waiting = data?.tasks.filter(task => task.state === 'waiting').length ?? 0
 
-  return <aside className="right-rail" aria-label="调度与任务">
+  return <aside className={`right-rail ${collapsed ? 'collapsed' : ''}`} aria-label="调度与任务">
+    {onToggleCollapse && (
+      <button
+        className="rail-edge-toggle"
+        aria-label={collapsed ? '展开调度与任务' : '收起调度与任务'}
+        title={collapsed ? '展开调度与任务' : '收起调度与任务'}
+        onClick={onToggleCollapse}
+      >
+        {collapsed ? <ChevronLeft size={16}/> : <ChevronRight size={16}/>}
+      </button>
+    )}
     <div className="right-rail-header">
       <div>
         <span className="right-rail-eyebrow">实例工作区</span>
