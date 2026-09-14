@@ -74,6 +74,7 @@
 .connection-label {display: flex; align-items: center; gap: 6px; color: var(--accent)}
 .topbar-divider {width: 1px; height: 14px; background: var(--border)}
 main {padding: 32px 32px 16px; width: 100%; margin: 0; flex: 1}
+.main-body {width: 100%; max-width: 1600px; margin: 0 auto}
 .page-title {display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 26px}
 .page-title h1 {font-size: 34px; font-weight: 700; letter-spacing: -.9px; line-height: 1.25}
 .title-actions {display: flex; gap: 10px; flex-wrap: wrap}

@@ -104,7 +104,7 @@ export function App() {
       <div className="topbar-right">{update.data?.available && <Link className="update-notice" to="/updater"><Download size={14}/><span>新版本可用</span></Link>}{instance && <button className={`rail-toggle icon-button ${!railCollapsed ? 'active' : ''}`} aria-label={railCollapsed ? '展开调度与任务' : '收起调度与任务'} title={railCollapsed ? '展开调度与任务' : '收起调度与任务'} onClick={() => { if (window.innerWidth <= 950) { setRailOpen(prev => !prev) } else { toggleRailCollapse() } }}>{railCollapsed ? <PanelRightOpen size={18}/> : <PanelRightClose size={18}/>}</button>}<span className="connection-label" title={connection === 'ready' ? '已连接' : '连接中'}>{connection === 'ready' ? <Wifi size={14}/> : <WifiOff size={14}/>}<span>{connection === 'ready' ? '已连接' : '连接中'}</span></span></div></header>
       {connection !== 'ready' && <div className="connection-banner" role="status"><WifiOff size={16}/>正在连接后端，配置输入会保留并在重连后保存；运行操作暂不可用。</div>}
       <div className="workspace-body">
-        <main id="main-content" tabIndex={-1}>{!schema || ((instance || location.pathname === '/') && !instancesLoaded) ? <Loading/> : !instance || current ? <Outlet context={update} key={instance ?? 'home'}/> : <Loading/>}</main>
+        <main id="main-content" tabIndex={-1}><div className="main-body">{!schema || ((instance || location.pathname === '/') && !instancesLoaded) ? <Loading/> : !instance || current ? <Outlet context={update} key={instance ?? 'home'}/> : <Loading/>}</div></main>
         {instance && <RightRail instance={instance} collapsed={railCollapsed} onToggleCollapse={toggleRailCollapse} onMobileClose={() => setRailOpen(false)}/>}
       </div>
     </div>
