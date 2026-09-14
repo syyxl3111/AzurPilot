@@ -16,7 +16,7 @@ export interface AppContextValue {
 }
 export const AppContext = createContext<AppContextValue | null>(null)
 const Context = AppContext
-export const useConnection = () => useSyncExternalStore(api.subscribe, api.getSnapshot)
+export const useConnection = () => useSyncExternalStore(api.subscribe, api.getSnapshot, api.getSnapshot)
 export const useApp = () => useContext(AppContext)!
 
 export function AppProvider({children}: {children: ReactNode}) {

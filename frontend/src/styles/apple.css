@@ -257,7 +257,15 @@ main:focus {outline: none}
 .resource-foot {font-size: 11px}
 .resource-value {font-weight: 650; letter-spacing: -1px}
 .resource-heading > div {border-radius: 10px}
-.schedule-panel, .monitor-panel {height: 700px}
+.schedule-panel {height: 700px}
+.monitor-panel {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden;
+}
 .task-state {font-size: 10px; border-radius: 6px}
 .task-row {min-height: 58px}
 .task-row time {font-size: 11px; color: var(--muted)}
@@ -276,12 +284,72 @@ main:focus {outline: none}
 [data-theme='dark'] .monitor-segmented {background: #ffffff10; border-color: #ffffff18; box-shadow: none}
 [data-theme='dark'] .monitor-segmented::before {background: #ffffff24}
 [data-theme='dark'] .monitor-segmented button[aria-selected='true'] {background: transparent; color: #f2f2f7; box-shadow: none}
-.monitor-panel .log-content {font-size: 12px; line-height: 1.8}
+.monitor-content {
+  position: relative;
+  width: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.monitor-content > .monitor-view {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--glass-edge) 45%, var(--border));
+  background: color-mix(in srgb, var(--surface) 25%, transparent);
+  box-shadow: inset 0 0 16px #0000000a, 0 2px 8px #00000008;
+}
+.monitor-content > .monitor-view[hidden] {
+  display: none !important;
+}
+.monitor-panel .preview-screen {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  max-height: none !important;
+  margin: 0 !important;
+  border-radius: inherit;
+  aspect-ratio: unset !important;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--surface) 35%, #162634), color-mix(in srgb, var(--bg) 85%, #0c141c) 85%);
+}
+[data-theme='dark'] .monitor-panel .preview-screen {
+  background: radial-gradient(ellipse at 50% 40%, #15222c 0%, #090e13 85%);
+}
+.monitor-panel .preview-screen .preview-img,
+.monitor-panel .preview-screen > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  position: absolute;
+  inset: 0;
+  display: block;
+  user-select: none;
+  border-radius: inherit;
+}
 .monitor-panel .log-content {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-y: auto;
   background: color-mix(in srgb, var(--surface) 30%, transparent);
 }
 .monitor-panel .log-filters,
 .monitor-panel .log-panel .panel-heading {
+  flex-shrink: 0;
   background: color-mix(in srgb, var(--surface) 18%, transparent);
   border-color: color-mix(in srgb, var(--glass-edge) 54%, var(--border));
 }
@@ -290,6 +358,11 @@ main:focus {outline: none}
   box-shadow: none;
   border: 0;
   border-radius: inherit;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 .statistics-tabs {position: relative; display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 2px; padding: 3px; margin-bottom: 20px; width: fit-content; max-width: 100%; overflow-x: auto; border: 1px solid #ffffff8c; border-radius: 999px; background: #ffffff52; backdrop-filter: blur(18px) saturate(125%); -webkit-backdrop-filter: blur(18px) saturate(125%); box-shadow: none}
 .statistics-tabs-indicator {position: absolute; left: 0; top: 0; z-index: 0; border-radius: 999px; background: #ffffff9e; pointer-events: none; transition: transform .24s cubic-bezier(.22,.61,.36,1), width .24s cubic-bezier(.22,.61,.36,1), height .24s cubic-bezier(.22,.61,.36,1), opacity .12s ease}
@@ -435,7 +508,7 @@ input, select, textarea {border-radius: 10px; min-height: 40px; background: var(
   .log-panel .panel-heading > div:first-child {flex: 1 0 100%; white-space: nowrap}
   .log-panel .panel-heading > div:last-child {margin-left: auto}
   .log-panel .text-button {white-space: nowrap; min-height: 44px}
-  .schedule-panel, .monitor-panel {height: 520px}
+  .schedule-panel {height: 520px}
   .home-summary {gap: 16px 22px}
   .home-summary > div {gap: 7px; font-size: 12px}
   .instance-card {padding: 24px}
