@@ -16,12 +16,11 @@
   --green-soft: #223d2a;
   --red: #ff8078;
 }
-body {background: radial-gradient(ellipse at 12% 0%, #bcdcff40, transparent 48%), radial-gradient(ellipse at 90% 5%, #dbcfff30, transparent 42%), var(--bg); background-attachment: fixed}
+body {background: var(--bg); background-attachment: fixed}
 #root {isolation: isolate}
-.wallpaper {position: fixed; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(140deg, #aacfff24, #e4d5f624 60%, transparent)}
-.wallpaper img {width: 100%; height: 100%; object-fit: cover; opacity: .58}
-.wallpaper::after {content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, color-mix(in srgb, var(--bg) 36%, transparent) 100%)}
-[data-theme='dark'] .wallpaper img {opacity: .42}
+.wallpaper {position: fixed; inset: 0; z-index: -1; pointer-events: none}
+.wallpaper img {width: 100%; height: 100%; object-fit: cover; opacity: 1}
+.wallpaper::after {display: none}
 .lucide {stroke-width: 1.75}
 
 /* 贴边布局：左边侧栏与上方标签栏贴紧屏幕边缘，保留毛玻璃材质。 */
@@ -218,14 +217,25 @@ main {
   margin: 0;
   height: 100%;
   overflow-y: auto;
-  padding: 36px 32px 32px;
+  padding: 24px 28px 28px;
+  background: transparent;
 }
-.main-body,
-main > * {
+.main-body {
   max-width: 1600px;
   width: 100%;
+  min-height: 100%;
   margin-left: auto;
   margin-right: auto;
+  background: color-mix(in srgb, var(--surface) 54%, transparent);
+  backdrop-filter: blur(14px) saturate(118%);
+  -webkit-backdrop-filter: blur(14px) saturate(118%);
+  border: 1px solid var(--glass-edge);
+  border-radius: 28px;
+  box-shadow: var(--glass-shadow);
+  padding: 32px;
+}
+[data-theme='dark'] .main-body {
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
 }
 main:focus {outline: none}
 .page-title {margin-bottom: 28px; align-items: center}
@@ -495,7 +505,8 @@ input, select, textarea {border-radius: 10px; min-height: 40px; background: var(
   .rail-edge-toggle {display: none !important}
   .mobile-rail-close {display: inline-flex !important}
   .right-rail-header {border-radius: 0}
-  main {padding: 28px 18px; height: auto; overflow: visible}
+  main {padding: 16px 12px; height: auto; overflow: visible}
+  .main-body {padding: 20px 16px; border-radius: 20px}
   .breadcrumb {font-size: 12px; gap: 6px}
   .page-title {gap: 18px}
   .title-actions {flex-wrap: wrap; gap: 4px}
@@ -524,7 +535,7 @@ input, select, textarea {border-radius: 10px; min-height: 40px; background: var(
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active) {
   .wallpaper {display: none}
-  .sidebar, .instance-menu, .task-submenu-flyout {background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none}
+  .main-body, .sidebar, .instance-menu, .task-submenu-flyout {background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none}
   .panel, .button, .topbar, .resource-card {border: 1px solid currentColor}
 }
 
