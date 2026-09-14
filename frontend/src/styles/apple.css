@@ -374,8 +374,10 @@ main:focus {outline: none}
 [data-theme='dark'] .statistics-tabs-indicator {background: #ffffff28}
 [data-theme='dark'] .statistics-tabs button.active {background: transparent; color: #f2f2f7}
 .statistics-note {border-left-color: var(--accent); border-radius: 12px}
-.group-nav {border: 0; padding: 6px; gap: 3px; border-radius: 16px; background: var(--surface-muted)}
+/* main 滚动容器有 padding-top: 36px，sticky top 偏移量是相对 content-box 起点计算的，需减去 36px 使吸顶时实际距离顶栏 18px（与右侧栏及标准组件间距一致） */
+.group-nav {top: calc(18px - 36px); border: 0; padding: 6px; gap: 3px; border-radius: 16px; background: var(--surface-muted); max-height: calc(var(--viewport-height) - var(--topbar-height, 76px) - 36px)}
 .group-nav a {border-radius: 10px}
+.config-group {scroll-margin-top: 18px}
 .group-indicator {background: var(--accent); width: 3px}
 .field-row {padding: 20px 24px}
 .field-label label {font-weight: 550}

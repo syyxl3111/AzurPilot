@@ -123,10 +123,10 @@
 .config-toolbar > span {display: flex; align-items: center; gap: 7px}
 .config-toolbar > button {margin-left: auto}
 .config-layout {display: grid; grid-template-columns: 145px minmax(0, 1fr); gap: 22px; align-items: start}
-.group-nav {position: sticky; top: calc(var(--topbar-height, 69px) + 16px); display: flex; flex-direction: column; border-left: 1px solid var(--border); padding-left: 8px; font-size: 11px; max-height: calc(var(--viewport-height) - var(--topbar-height, 69px) - 32px); overflow-y: auto}
+.group-nav {position: sticky; top: calc(18px - 36px); display: flex; flex-direction: column; border-left: 1px solid var(--border); padding-left: 8px; font-size: 11px; max-height: calc(var(--viewport-height) - var(--topbar-height, 69px) - 36px); overflow-y: auto}
 .group-nav a {padding: 10px; color: var(--muted); border-radius: 5px; line-height: 1.7}
 .group-nav a:hover {color: var(--accent); background: var(--accent-soft)}
-.config-group {margin-bottom: 19px; scroll-margin-top: calc(var(--topbar-height, 69px) + 16px)}
+.config-group {margin-bottom: 19px; scroll-margin-top: 18px}
 .group-indicator {width: 4px; height: 15px; border-radius: 3px; background: #74bda8}
 .field-row {padding: 19px 22px; display: flex; align-items: center; justify-content: space-between; gap: 25px; border-bottom: 1px solid var(--border)}
 .field-row:last-child {border-bottom: 0}
