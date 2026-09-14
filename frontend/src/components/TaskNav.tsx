@@ -23,10 +23,31 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
   const flyoutRef = useRef<HTMLDivElement>(null)
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({})
 
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const cancelClose = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }, [])
+
+  const scheduleClose = useCallback(() => {
+    cancelClose()
+    closeTimerRef.current = setTimeout(() => {
+      setOpenMenuKey(null)
+    }, 180)
+  }, [cancelClose])
+
+  useEffect(() => {
+    return () => cancelClose()
+  }, [cancelClose])
+
   // 路由跳转时收起二级菜单
   useEffect(() => {
+    cancelClose()
     setOpenMenuKey(null)
-  }, [location.pathname])
+  }, [location.pathname, cancelClose])
 
   // 点击外部收起
   useEffect(() => {
@@ -36,11 +57,12 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
       if (flyoutRef.current?.contains(target)) return
       const currentBtn = buttonRefs.current[openMenuKey]
       if (currentBtn?.contains(target)) return
+      cancelClose()
       setOpenMenuKey(null)
     }
     document.addEventListener('pointerdown', handleOutsidePointer)
     return () => document.removeEventListener('pointerdown', handleOutsidePointer)
-  }, [openMenuKey])
+  }, [openMenuKey, cancelClose])
 
   // 按 Escape 收起
   useEffect(() => {
@@ -48,15 +70,16 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         const keyToFocus = openMenuKey
+        cancelClose()
         setOpenMenuKey(null)
         buttonRefs.current[keyToFocus]?.focus()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [openMenuKey])
+  }, [openMenuKey, cancelClose])
 
-  // 让弹出的子菜单窗口中心与“父菜单的那一项”的中心严格水平对齐
+  // 让弹出的子菜单窗口顶部与“父菜单的那一项”的上边缘严格对齐
   const updateFlyoutPosition = useCallback(() => {
     if (!openMenuKey || !flyoutRef.current || !navContainerRef.current) return
     const btn = buttonRefs.current[openMenuKey]
@@ -68,10 +91,10 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
     const flyoutRect = flyout.getBoundingClientRect()
     const containerRect = container.getBoundingClientRect()
 
-    // 父菜单项本身的垂直中心线（视口坐标）
-    const itemCenterInViewport = btnRect.top + btnRect.height / 2
-    // 子菜单窗口的理想顶部位置（使其垂直中心与该父菜单项中心处于同一水平高度）
-    const idealTopInViewport = itemCenterInViewport - flyoutRect.height / 2
+    // 父菜单项本身的顶部位置（视口坐标）
+    const itemTopInViewport = btnRect.top
+    // 子菜单窗口的理想顶部位置（与该父菜单项的上边缘对齐）
+    const idealTopInViewport = itemTopInViewport
 
     // 视口边界保护：距视口顶部/底部至少留 8px
     const minViewportTop = 8
@@ -97,8 +120,26 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
     }
   }, [openMenuKey, updateFlyoutPosition])
 
+  const handleGroupMouseEnter = (key: string) => {
+    cancelClose()
+    setOpenMenuKey(key)
+  }
+
+  const handleGroupMouseLeave = () => {
+    scheduleClose()
+  }
+
+  const handleFlyoutMouseEnter = () => {
+    cancelClose()
+  }
+
+  const handleFlyoutMouseLeave = () => {
+    scheduleClose()
+  }
+
   // 点击一级菜单处理
   const handleGroupClick = (key: string) => {
+    cancelClose()
     setOpenMenuKey(prev => (prev === key ? null : key))
   }
 
@@ -155,6 +196,8 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
                 ]
                   .filter(Boolean)
                   .join(' ')}
+                onMouseEnter={() => handleGroupMouseEnter(key)}
+                onMouseLeave={handleGroupMouseLeave}
                 onClick={() => handleGroupClick(key)}
                 aria-haspopup="menu"
                 aria-expanded={isExpanded}
@@ -175,6 +218,8 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
           style={{ top: `${flyoutTop}px` }}
           role="menu"
           aria-label={t(`Menu.${openMenuKey}.name`)}
+          onMouseEnter={handleFlyoutMouseEnter}
+          onMouseLeave={handleFlyoutMouseLeave}
         >
           <div className="task-submenu-list">
             {activeTasks.map(task => (

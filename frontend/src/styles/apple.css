@@ -181,6 +181,7 @@ body {background: radial-gradient(ellipse at 12% 0%, #bcdcff40, transparent 48%)
 .task-group-icon {color: var(--accent)}
 .task-group-button.expanded, [data-theme='dark'] .task-group-button.expanded {border-color: transparent; background: var(--accent-soft)}
 .task-submenu-flyout, .instance-menu {background: var(--glass-tint); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border-color: var(--glass-edge); border-radius: 16px; box-shadow: 0 12px 40px #0002; padding: 7px}
+.task-submenu-flyout::before {content: ''; position: absolute; top: -10px; bottom: -10px; left: -26px; width: 28px; pointer-events: auto}
 .task-submenu-item {font-size: 13px; min-height: 38px; border-radius: 9px; color: var(--text)}
 .task-submenu-item.active .task-submenu-dot {box-shadow: none}
 .nav-search {border-radius: 10px; background: var(--surface-muted); color: var(--muted)}
