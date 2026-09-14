@@ -8,7 +8,15 @@ const groupIcons: Record<string, LucideIcon> = {
   Reward: Gift, DailyMission: CalendarDays, Opsi: Compass, Island: Palmtree, FleetManagement: Ship, Tool: Wrench,
 }
 
-export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
+export function TaskNav({
+  defaultOpenKey,
+  onNavigate,
+  forceMobile,
+}: {
+  defaultOpenKey?: string
+  onNavigate?: () => void
+  forceMobile?: boolean
+} = {}) {
   const { schema, t } = useApp()
   const { instance } = useParams()
   const location = useLocation()
@@ -16,13 +24,38 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
 
   const [search, setSearch] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+
+  // 检测是否为移动端视口（<= 950px）
+  const [isMobileState, setIsMobileState] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.innerWidth <= 950
+  })
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mql = window.matchMedia('(max-width: 950px)')
+    const update = (e: MediaQueryListEvent | MediaQueryList) => setIsMobileState(e.matches)
+    update(mql)
+    mql.addEventListener('change', update)
+    return () => mql.removeEventListener('change', update)
+  }, [])
+
+  const isMobile = forceMobile ?? isMobileState
+
+  // 电脑端：向右弹出的二级菜单激活 key
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(defaultOpenKey ?? null)
   const [flyoutTop, setFlyoutTop] = useState(0)
+
+  // 手机端：向下展开的手风琴分组 Set
+  const [mobileOpenKeys, setMobileOpenKeys] = useState<Set<string>>(() => {
+    const initial = new Set<string>()
+    if (defaultOpenKey) initial.add(defaultOpenKey)
+    return initial
+  })
 
   const navContainerRef = useRef<HTMLDivElement>(null)
   const flyoutRef = useRef<HTMLDivElement>(null)
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({})
-
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const cancelClose = useCallback(() => {
@@ -39,19 +72,31 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
     }, 180)
   }, [cancelClose])
 
-  useEffect(() => {
-    return () => cancelClose()
-  }, [cancelClose])
+  useEffect(() => () => cancelClose(), [cancelClose])
 
-  // 路由跳转时收起二级菜单
+  // 路由跳转时：电脑端收起弹出层；手机端自动展开当前任务所在分组
   useEffect(() => {
     cancelClose()
     setOpenMenuKey(null)
-  }, [location.pathname, cancelClose])
 
-  // 点击外部收起
+    if (schema) {
+      for (const [key, group] of Object.entries(schema.menu)) {
+        if (group.tasks.some(task => location.pathname.endsWith(`/task/${task}`))) {
+          setMobileOpenKeys(prev => {
+            if (prev.has(key)) return prev
+            const next = new Set(prev)
+            next.add(key)
+            return next
+          })
+          break
+        }
+      }
+    }
+  }, [location.pathname, schema, cancelClose])
+
+  // 电脑端：点击外部收起
   useEffect(() => {
-    if (!openMenuKey) return
+    if (isMobile || !openMenuKey) return
     const handleOutsidePointer = (event: PointerEvent) => {
       const target = event.target as Node
       if (flyoutRef.current?.contains(target)) return
@@ -62,11 +107,11 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
     }
     document.addEventListener('pointerdown', handleOutsidePointer)
     return () => document.removeEventListener('pointerdown', handleOutsidePointer)
-  }, [openMenuKey, cancelClose])
+  }, [isMobile, openMenuKey, cancelClose])
 
-  // 按 Escape 收起
+  // 电脑端：按 Escape 收起
   useEffect(() => {
-    if (!openMenuKey) return
+    if (isMobile || !openMenuKey) return
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         const keyToFocus = openMenuKey
@@ -77,11 +122,11 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [openMenuKey, cancelClose])
+  }, [isMobile, openMenuKey, cancelClose])
 
-  // 让弹出的子菜单窗口顶部与“父菜单的那一项”的上边缘严格对齐
+  // 电脑端：计算二级悬浮菜单垂直对齐位置
   const updateFlyoutPosition = useCallback(() => {
-    if (!openMenuKey || !flyoutRef.current || !navContainerRef.current) return
+    if (isMobile || !openMenuKey || !flyoutRef.current || !navContainerRef.current) return
     const btn = buttonRefs.current[openMenuKey]
     const flyout = flyoutRef.current
     const container = navContainerRef.current
@@ -91,26 +136,20 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
     const flyoutRect = flyout.getBoundingClientRect()
     const containerRect = container.getBoundingClientRect()
 
-    // 父菜单项本身的顶部位置（视口坐标）
-    const itemTopInViewport = btnRect.top
-    // 子菜单窗口的理想顶部位置（与该父菜单项的上边缘对齐）
-    const idealTopInViewport = itemTopInViewport
-
-    // 视口边界保护：距视口顶部/底部至少留 8px
+    const idealTopInViewport = btnRect.top
     const minViewportTop = 8
     const maxViewportTop = Math.max(minViewportTop, window.innerHeight - flyoutRect.height - 8)
     const clampedViewportTop = Math.max(minViewportTop, Math.min(idealTopInViewport, maxViewportTop))
 
-    // 转换为定位父容器 (.task-nav-container) 内的 top 偏移
     setFlyoutTop(clampedViewportTop - containerRect.top)
-  }, [openMenuKey])
+  }, [isMobile, openMenuKey])
 
   useLayoutEffect(() => {
     updateFlyoutPosition()
-  }, [openMenuKey, updateFlyoutPosition])
+  }, [updateFlyoutPosition])
 
   useEffect(() => {
-    if (!openMenuKey) return
+    if (isMobile || !openMenuKey) return
     window.addEventListener('resize', updateFlyoutPosition)
     const scrollContainer = navContainerRef.current?.querySelector('.task-nav')
     scrollContainer?.addEventListener('scroll', updateFlyoutPosition, { passive: true })
@@ -118,29 +157,44 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
       window.removeEventListener('resize', updateFlyoutPosition)
       scrollContainer?.removeEventListener('scroll', updateFlyoutPosition)
     }
-  }, [openMenuKey, updateFlyoutPosition])
+  }, [isMobile, openMenuKey, updateFlyoutPosition])
 
   const handleGroupMouseEnter = (key: string) => {
+    if (isMobile) return
     cancelClose()
     setOpenMenuKey(key)
   }
 
   const handleGroupMouseLeave = () => {
+    if (isMobile) return
     scheduleClose()
   }
 
   const handleFlyoutMouseEnter = () => {
+    if (isMobile) return
     cancelClose()
   }
 
   const handleFlyoutMouseLeave = () => {
+    if (isMobile) return
     scheduleClose()
   }
 
-  // 点击一级菜单处理
   const handleGroupClick = (key: string) => {
-    cancelClose()
-    setOpenMenuKey(prev => (prev === key ? null : key))
+    if (isMobile) {
+      setMobileOpenKeys(prev => {
+        const next = new Set(prev)
+        if (next.has(key)) {
+          next.delete(key)
+        } else {
+          next.add(key)
+        }
+        return next
+      })
+    } else {
+      cancelClose()
+      setOpenMenuKey(prev => (prev === key ? null : key))
+    }
   }
 
   const activeGroup = schema && openMenuKey ? schema.menu[openMenuKey] : null
@@ -154,17 +208,34 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
 
   return (
     <div className="task-nav-container" ref={navContainerRef}>
-      <div className="sidebar-label task-nav-heading">任务配置<button className="icon-button" aria-label={searchOpen ? '收起任务搜索' : '展开任务搜索'} aria-expanded={searchOpen} aria-controls="task-search" onClick={() => {setSearchOpen(!searchOpen); setSearch(''); setOpenMenuKey(null)}}><Search size={15}/></button></div>
-      {searchOpen && <div className="nav-search" id="task-search">
-        <Search size={14} />
-        <input
-          autoFocus
-          aria-label="搜索任务"
-          value={search}
-          onChange={event => setSearch(event.target.value)}
-          placeholder="搜索任务…"
-        />
-      </div>}
+      <div className="sidebar-label task-nav-heading">
+        任务配置
+        <button
+          className="icon-button"
+          aria-label={searchOpen ? '收起任务搜索' : '展开任务搜索'}
+          aria-expanded={searchOpen}
+          aria-controls="task-search"
+          onClick={() => {
+            setSearchOpen(!searchOpen)
+            setSearch('')
+            setOpenMenuKey(null)
+          }}
+        >
+          <Search size={15} />
+        </button>
+      </div>
+      {searchOpen && (
+        <div className="nav-search" id="task-search">
+          <Search size={14} />
+          <input
+            autoFocus
+            aria-label="搜索任务"
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder="搜索任务…"
+          />
+        </div>
+      )}
 
       <nav className="task-nav">
         {schema &&
@@ -179,39 +250,63 @@ export function TaskNav({ defaultOpenKey }: { defaultOpenKey?: string } = {}) {
             const isGroupActive = group.tasks.some(task =>
               location.pathname.endsWith(`/task/${task}`)
             )
-            const isExpanded = openMenuKey === key
+            const isExpanded = isMobile
+              ? Boolean(search.trim()) || mobileOpenKeys.has(key)
+              : openMenuKey === key
             const GroupIcon = groupIcons[key] ?? Anchor
 
             return (
-              <button
-                key={key}
-                type="button"
-                ref={el => {
-                  buttonRefs.current[key] = el
-                }}
-                className={[
-                  'task-group-button',
-                  isExpanded && 'expanded',
-                  isGroupActive && 'active',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onMouseEnter={() => handleGroupMouseEnter(key)}
-                onMouseLeave={handleGroupMouseLeave}
-                onClick={() => handleGroupClick(key)}
-                aria-haspopup="menu"
-                aria-expanded={isExpanded}
-              >
-                <GroupIcon size={18} className="task-group-icon" />
-                <span className="task-group-title">{t(`Menu.${key}.name`)}</span>
-                <span className="task-group-badge">{filteredTasks.length}</span>
-                <ChevronRight size={13} className="task-group-arrow" />
-              </button>
+              <div key={key} className="task-group">
+                <button
+                  key={key}
+                  type="button"
+                  ref={el => {
+                    buttonRefs.current[key] = el
+                  }}
+                  className={[
+                    'task-group-button',
+                    isExpanded && 'expanded',
+                    isGroupActive && 'active',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  onMouseEnter={() => handleGroupMouseEnter(key)}
+                  onMouseLeave={handleGroupMouseLeave}
+                  onClick={() => handleGroupClick(key)}
+                  aria-haspopup={isMobile ? undefined : 'menu'}
+                  aria-expanded={isExpanded}
+                >
+                  <GroupIcon size={18} className="task-group-icon" />
+                  <span className="task-group-title">{t(`Menu.${key}.name`)}</span>
+                  <span className="task-group-badge">{filteredTasks.length}</span>
+                  <ChevronRight size={13} className="task-group-arrow" />
+                </button>
+
+                {/* 手机端：向下展开手风琴 */}
+                {isMobile && isExpanded && (
+                  <div className="task-group-children" role="group" aria-label={t(`Menu.${key}.name`)}>
+                    {filteredTasks.map(task => (
+                      <NavLink
+                        key={task}
+                        to={`${base}/task/${task}`}
+                        className={({ isActive }) =>
+                          ['task-nav-item', 'task-submenu-item', isActive && 'active'].filter(Boolean).join(' ')
+                        }
+                        onClick={() => onNavigate?.()}
+                      >
+                        <span className="task-nav-dot task-submenu-dot" />
+                        <span className="task-nav-text task-submenu-item-text">{t(`Task.${task}.name`)}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
             )
           })}
       </nav>
 
-      {openMenuKey && activeGroup && (
+      {/* 电脑端：向右弹出二级浮层 */}
+      {!isMobile && openMenuKey && activeGroup && (
         <div
           ref={flyoutRef}
           className="task-submenu-flyout"

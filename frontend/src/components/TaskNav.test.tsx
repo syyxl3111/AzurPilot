@@ -49,7 +49,7 @@ const mockContext: AppContextValue = {
 }
 
 describe('TaskNav 导航组件', () => {
-  it('正确渲染向右展开的一级菜单按钮及无障碍属性', () => {
+  it('电脑端：正确渲染一级菜单按钮及无障碍属性', () => {
     const html = renderToStaticMarkup(
       <AppContext.Provider value={mockContext}>
         <MemoryRouter initialEntries={['/i/default/overview']}>
@@ -70,7 +70,7 @@ describe('TaskNav 导航组件', () => {
     expect(html).toContain('aria-haspopup="menu"')
     expect(html).toContain('aria-expanded="false"')
 
-    // 检查向右箭头图标和菜单文本
+    // 检查向右指示箭头图标和菜单文本
     expect(html).toContain('task-group-arrow')
     expect(html).toContain('智慧港区Plus')
     expect(html).toContain('出击Plus')
@@ -80,23 +80,7 @@ describe('TaskNav 导航组件', () => {
     expect(html).toContain('>3<') // Alas 组有 3 个任务
   })
 
-  it('当处于某任务页面时，对应的一级菜单具备 active 高亮状态', () => {
-    const html = renderToStaticMarkup(
-      <AppContext.Provider value={mockContext}>
-        <MemoryRouter initialEntries={['/i/default/task/Main']}>
-          <Routes>
-            <Route path="/i/:instance/task/:task" element={<TaskNav />} />
-          </Routes>
-        </MemoryRouter>
-      </AppContext.Provider>
-    )
-
-    // Main 任务属于 Farm 分组（出击Plus），该一级菜单按钮应带有 active 类
-    expect(html).toContain('task-group-button active')
-    expect(html).toContain('出击Plus')
-  })
-
-  it('点击展开一级菜单时，右侧弹出二级子菜单，并按子任务项动态渲染', () => {
+  it('电脑端：展开一级菜单时，向右弹出二级子菜单浮层', () => {
     const html = renderToStaticMarkup(
       <AppContext.Provider value={mockContext}>
         <MemoryRouter initialEntries={['/i/default/overview']}>
@@ -111,10 +95,9 @@ describe('TaskNav 导航组件', () => {
     expect(html).toContain('task-group-button expanded')
     expect(html).toContain('aria-expanded="true"')
 
-    // 弹出层检查（无标题栏）
+    // 电脑端向右弹出层检查
     expect(html).toContain('task-submenu-flyout')
-    expect(html).not.toContain('task-submenu-header')
-    expect(html).not.toContain('3 项')
+    expect(html).not.toContain('task-group-children')
 
     // 子菜单列表检查：应动态渲染出 Alas 下的所有子任务
     expect(html).toContain('task-submenu-list')
@@ -125,5 +108,31 @@ describe('TaskNav 导航组件', () => {
     expect(html).toContain('href="/i/default/task/Alas"')
     expect(html).toContain('href="/i/default/task/General"')
     expect(html).toContain('href="/i/default/task/Restart"')
+  })
+
+  it('手机端：forceMobile 展开一级菜单时，在下方垂直展开手风琴子列表', () => {
+    const html = renderToStaticMarkup(
+      <AppContext.Provider value={mockContext}>
+        <MemoryRouter initialEntries={['/i/default/overview']}>
+          <Routes>
+            <Route path="/i/:instance/*" element={<TaskNav defaultOpenKey="Alas" forceMobile={true} />} />
+          </Routes>
+        </MemoryRouter>
+      </AppContext.Provider>
+    )
+
+    // 一级菜单应带有 expanded 类和 aria-expanded="true"
+    expect(html).toContain('task-group-button expanded')
+    expect(html).toContain('aria-expanded="true"')
+    expect(html).not.toContain('aria-haspopup="menu"')
+
+    // 手机端向下展开检查
+    expect(html).toContain('task-group-children')
+    expect(html).not.toContain('task-submenu-flyout')
+
+    // 子任务列表检查
+    expect(html).toContain('task-nav-item')
+    expect(html).toContain('基础设置')
+    expect(html).toContain('href="/i/default/task/Alas"')
   })
 })

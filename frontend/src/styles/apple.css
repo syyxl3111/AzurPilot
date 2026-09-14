@@ -471,7 +471,22 @@ input, select, textarea {border-radius: 10px; min-height: 40px; background: var(
   .app-shell {display: block; height: auto; min-height: var(--viewport-height); overflow: visible}
   .main-shell {height: auto; min-height: var(--viewport-height); overflow: visible}
   .workspace-body {display: block; overflow: visible}
-  .sidebar {width: 232px; left: -250px; top: 0; height: var(--viewport-height); border-radius: 0}
+  .sidebar {
+    width: 232px;
+    left: -250px;
+    top: 0;
+    height: var(--viewport-height);
+    border-radius: 0;
+    background: var(--surface) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    z-index: 60;
+    box-shadow: 10px 0 30px #00000030;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
   .sidebar-brand {height: 56px; min-height: 56px}
   .topbar {margin: 0; top: 0; padding: 0 12px; height: 56px; min-height: 56px; gap: 6px; border-radius: 0}
   .right-rail {
@@ -482,21 +497,28 @@ input, select, textarea {border-radius: 10px; min-height: 40px; background: var(
     min-width: 0;
     height: var(--viewport-height);
     margin: 0;
-    z-index: 30;
+    z-index: 60;
+    background: var(--surface) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     transition: right .2s ease;
     box-shadow: -20px 0 60px #10243730;
     border-radius: 0;
     border: 0;
-    border-left: 1px solid var(--glass-edge);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
   .right-rail.collapsed {
     width: min(360px, 92vw) !important;
     min-width: 0 !important;
     opacity: 1 !important;
     pointer-events: auto !important;
-    background: var(--glass-tint) !important;
-    backdrop-filter: blur(24px) saturate(130%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(130%) !important;
+    background: var(--surface) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
   .right-rail.collapsed > :not(.rail-edge-toggle) {
     display: flex !important;
@@ -507,12 +529,12 @@ input, select, textarea {border-radius: 10px; min-height: 40px; background: var(
   .right-rail-header {border-radius: 0}
   main {padding: 16px 12px; height: auto; overflow: visible}
   .main-body {padding: 20px 16px; border-radius: 20px}
-  .breadcrumb {font-size: 12px; gap: 6px}
+  .breadcrumb {font-size: 12px; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: calc(100vw - 120px)}
   .page-title {gap: 18px}
   .title-actions {flex-wrap: wrap; gap: 4px}
   .button {min-height: 44px; height: auto; padding: 10px 16px}
   .icon-button {width: 44px; height: 44px}
-  .task-group-button, .task-submenu-item {min-height: 44px}
+  .task-group-button, .task-submenu-item, .task-nav-item {min-height: 44px}
   .sidebar-label .icon-button {width: 36px; height: 36px}
   .mobile-close {top: 6px}
   .statistics-tabs {width: 100%; max-width: 100%; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; padding: 3px; overflow: hidden}
@@ -522,6 +544,11 @@ input, select, textarea {border-radius: 10px; min-height: 40px; background: var(
   .monitor-segmented::before {height: 40px}
   .monitor-tabs .text-button {font-size: 11px}
   .monitor-tabs > span {font-size: 10px}
+  .monitor-content > .monitor-view.logs-view {
+    aspect-ratio: unset !important;
+    min-height: 560px;
+    height: 65vh;
+  }
   .log-panel .panel-heading {flex-wrap: wrap; gap: 4px}
   .log-panel .panel-heading > div:first-child {flex: 1 0 100%; white-space: nowrap}
   .log-panel .panel-heading > div:last-child {margin-left: auto}
