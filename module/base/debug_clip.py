@@ -53,9 +53,16 @@ import shutil
 import subprocess
 import time
 
+# 在导入 adbutils 之前修补 pkg_resources（adbutils 顶层就 import 它，而本项目不依赖
+# setuptools）。这里是 module/device 之外唯一直接导入 adbutils 的地方，补丁必须显式
+# 先装；顺带避免被 import 优化去掉。
+from module.device.pkg_resources import get_distribution
+
 from adbutils import AdbClient, AdbDevice
 
 from module.logger import logger
+
+_ = get_distribution
 
 DEFAULT_OUTPUT_DIR = "./log/clips"
 # 输出帧率。设备按刷新率（MuMu 实测 47~68fps）录，收尾转码时降到这个帧率
