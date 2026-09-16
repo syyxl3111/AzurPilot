@@ -86,7 +86,7 @@
 cd frontend
 npm run build
 $env:AZURPILOT_PASSWORD = '<config/deploy.yaml 里的 Webui.Password>'
-npx playwright test --config playwright.live.config.ts
+npm run test:e2e:mobile:live
 ```
 
 密码走环境变量，不写进仓库；没设就整组跳过。这份配置打的是**真实服务**（不需要 webServer），
@@ -452,7 +452,8 @@ npm run dev:mock --prefix frontend
 | `src/mobile` | 手机端外壳与页面（布局层；设计令牌与组件外观来自 PC 的 `src/styles`） |
 | `src/mobile/dev` | 组件测试页，分区与文案对齐 PC 的 `pages/DevControls.tsx`，按需加载 |
 | `src/styles` | 设计变量、布局、组件样式（**电脑端与手机端共用**） |
-| `e2e` | 连接真实测试 API 的浏览器回归；`e2e-mobile/mockup.spec.ts` 是手机端示意图的纯前端回归 |
+| `e2e` | 连接真实测试 API 的 PC 浏览器回归（`npm run test:e2e`） |
+| `e2e-mobile` | 手机端回归：`mockup.spec.ts` 是纯前端示意图，`live.spec.ts` 打真实服务；**独立目录**，不会被 PC 的 `test:e2e` 拉进来 |
 | `mock` | 独立的内存模拟服务及状态测试 |
 | `../module/api` | 协议、认证会话、路由、业务适配与前后端 UA 分流 |
 | `../module/runtime` | 独立于界面的进程、OCR、更新与认证服务 |
@@ -488,7 +489,7 @@ npm run test:e2e:mobile
 cd frontend
 npm run build
 $env:AZURPILOT_PASSWORD = '<config/deploy.yaml 里的 Webui.Password>'
-npx playwright test --config playwright.live.config.ts
+npm run test:e2e:mobile:live
 ```
 
 它验证的是**真的写回了后端**：`config.patch` 帧、`statistics.report` 的参数、
