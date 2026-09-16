@@ -12,7 +12,7 @@ import { defineConfig } from '@playwright/test'
  * 密码走环境变量而不是写进仓库；没设就整组跳过。
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './e2e-mobile',
   testMatch: ['**/live.spec.ts'],
   fullyParallel: false,
   workers: 1,

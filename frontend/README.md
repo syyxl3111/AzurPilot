@@ -90,7 +90,7 @@ npx playwright test --config playwright.live.config.ts
 ```
 
 密码走环境变量，不写进仓库；没设就整组跳过。这份配置打的是**真实服务**（不需要 webServer），
-与 `playwright.mockup.config.ts`（vite preview + 假数据）分开。`e2e/live.spec.ts` 里最有力的
+与 `playwright.mockup.config.ts`（vite preview + 假数据）分开。`e2e-mobile/live.spec.ts` 里最有力的
 断言是「示意图独有的假数据一个都不能出现」（比如假实例 `alas2`、写死的分组列表），
 以及「分组/任务名必须是翻译过的中文，不能是 `menu.json` 的键」。
 
@@ -138,7 +138,7 @@ src/mobile/mobile.css                      ← 手机端布局层，必须最后
 
 文字不贴边：行内边距 ≥10/16px、最小行高 48px（`--m-row-height`）；行内正文用 `.m-list-body` 撑开，把行尾的动作按钮（如调度队列的「立即执行」）推到最右。**不要给正文写 `all: unset`** —— 那会把 `flex: 1` 一起抹掉，按钮就会紧贴在文字后面。
 
-> **行内不放第二列数字。** 任务分组行曾经在中间放一个条数（`.m-list-count`），结果 `justify-content: space-between` 把它推到行中央，配上 56px 行高看着像三行文字。现在分组行与组内任务行都只有「左边文字 + 右边箭头」两个子元素，`.m-nav-row .m-list-label` 用 `flex: 1` 吃掉中间的空档；条数改由段落标题右侧的 `.m-count-badge` 承担（`e2e/mockup.spec.ts` 断言 `node.children.length === 2` 且行高落在 44–50px）。
+> **行内不放第二列数字。** 任务分组行曾经在中间放一个条数（`.m-list-count`），结果 `justify-content: space-between` 把它推到行中央，配上 56px 行高看着像三行文字。现在分组行与组内任务行都只有「左边文字 + 右边箭头」两个子元素，`.m-nav-row .m-list-label` 用 `flex: 1` 吃掉中间的空档；条数改由段落标题右侧的 `.m-count-badge` 承担（`e2e-mobile/mockup.spec.ts` 断言 `node.children.length === 2` 且行高落在 44–50px）。
 
 ### 搜索框
 
@@ -299,7 +299,7 @@ Cookie 名为 `azurpilot.shell`，响应带 `Vary: User-Agent, Cookie`，所以 
 
 ### 结构与隐私
 
-`mobile.html` 不加载统计脚本、不请求外部字体、也不请求 PC 首页那张 `api.yppp.net` 背景图 —— 除同源外零网络请求，且由 `e2e/mockup.spec.ts` 逐条断言。`viewport-fit=cover` 配合 `env(safe-area-inset-*)` 让内容铺到刘海与手势条区域。
+`mobile.html` 不加载统计脚本、不请求外部字体、也不请求 PC 首页那张 `api.yppp.net` 背景图 —— 除同源外零网络请求，且由 `e2e-mobile/mockup.spec.ts` 逐条断言。`viewport-fit=cover` 配合 `env(safe-area-inset-*)` 让内容铺到刘海与手势条区域。
 
 页面结构：`/` 实例列表（无底部 Tab）· `/i/:instance/{overview,instance,tasks,stats,logs}`（有底部 Tab）· **任务分组列表**是「任务」段下的第二层（仍是列表，保留 Tab 栏）· 任务配置与设置是全屏推入页（盖住 Tab 栏）· `/dev` 组件测试页只在开发者模式可达。
 
@@ -376,7 +376,7 @@ PC 的 `.status` 取值在手机上**不达标**：`running` 的 `--green #248a3
 - **`mobile-mockup.html` 是评审用的临时入口**，渲染假数据。它的配置夹具只覆盖 4 个代表性任务
   （`Alas` / `Commission` / `Restart` / `FleetScan`，覆盖开关、下拉、数字、多行、日期、存储、
   只读、hide 与工具任务），其余任务在示意图里会显示「没有可配置项」—— 真机上它们是有配置的。
-  全量 96 个任务的 `args.json` 有 410 KB，搬进前端夹具不划算。真机验证一律走 `live.spec.ts`。
+  全量 96 个任务的 `args.json` 有 410 KB，搬进前端夹具不划算。真机验证一律走 `e2e-mobile/live.spec.ts`。
 
 ## 启动
 
@@ -452,7 +452,7 @@ npm run dev:mock --prefix frontend
 | `src/mobile` | 手机端外壳与页面（布局层；设计令牌与组件外观来自 PC 的 `src/styles`） |
 | `src/mobile/dev` | 组件测试页，分区与文案对齐 PC 的 `pages/DevControls.tsx`，按需加载 |
 | `src/styles` | 设计变量、布局、组件样式（**电脑端与手机端共用**） |
-| `e2e` | 连接真实测试 API 的浏览器回归；`mockup.spec.ts` 是手机端示意图的纯前端回归 |
+| `e2e` | 连接真实测试 API 的浏览器回归；`e2e-mobile/mockup.spec.ts` 是手机端示意图的纯前端回归 |
 | `mock` | 独立的内存模拟服务及状态测试 |
 | `../module/api` | 协议、认证会话、路由、业务适配与前后端 UA 分流 |
 | `../module/runtime` | 独立于界面的进程、OCR、更新与认证服务 |
@@ -477,7 +477,7 @@ npm run test:e2e:mock
 ```powershell
 npm run build --prefix frontend
 cd frontend
-npx playwright test --config playwright.mockup.config.ts
+npm run test:e2e:mobile
 ```
 
 它的 `webServer` 用 `vite preview` 托管构建产物，视口固定为 412×915 的安卓 UA。最后一条用例会把各屏截图导出到 `frontend/screenshots/mobile/`（**刻意不写进 `test-results/`** —— Playwright 每次运行都会清空那个目录，截图留不住）。**改完手机端样式必须先 `npm run build` 再跑它** —— 它读的是 `dist` 而不是源码。

@@ -6,14 +6,15 @@ import { defineConfig } from '@playwright/test'
  * 与 playwright.config.ts 分开：那份跑的是 PC 端（需要 Python 后端，端口 22391），
  * 这份跑的是静态产物 —— vite preview 起 dist 里的 mobile-mockup.html，
  * 用 412×915 视口 + Android UA + 触摸，复现真机上的排版。
- * 只匹配 mockup.spec.ts，避免把依赖后端的 PC 用例一起拉进来。
+ * 手机端用例单独放 e2e-mobile/（不在 PC 的 testDir 里），
+ * 免得 PC 那份 `npm run test:e2e` 把需要真后端/真密码的用例也捎上。
  *
  * 注意：Windows PowerShell 5.1 的 Get-Content / Set-Content 默认按 GBK 处理无 BOM 的
  * UTF-8 文件，用它改这个文件会把中文注释读坏（三字节字符的尾字节还会吃掉换行）。
  * 要改就用带 UTF-8 的编辑器。
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './e2e-mobile',
   testMatch: ['**/mockup.spec.ts'],
   fullyParallel: false,
   workers: 1,
