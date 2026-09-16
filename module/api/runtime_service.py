@@ -52,7 +52,8 @@ class RuntimeService:
         tasks.sort(key=lambda item: (-1, 0) if item['state'] == 'running' else
                    (0, order.get(item['name'], len(order))) if item['pending'] else (1, item['nextRun']))
         resources = [{'name': name, 'label': self.configs.translate(f'{name}._info.name'),
-                      'value': values.get('Value'), 'limit': values.get('Limit'), 'record': values.get('Record')}
+                      'value': values.get('Value'), 'limit': values.get('Limit'),
+                      'record': values.get('Record'), 'total': values.get('Total')}
                      for name, values in data.get('Dashboard', {}).items() if 'Value' in values]
         return {'instance': instance, 'revision': revision,
                 'status': STATES.get(manager.state, 'stopped') if manager else 'stopped',

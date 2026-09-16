@@ -17,7 +17,7 @@ export interface Schema {
 }
 export interface Config { instance: string; revision: string; values: Values }
 export interface ScheduledTask { name: string; nextRun: string; pending: boolean; state: 'running' | 'pending' | 'waiting' }
-export interface Resource { name: string; label: string; value: number | null; limit?: number; record?: string }
+export interface Resource { name: string; label: string; value: number | null; limit?: number; record?: string; total?: number }
 export interface Overview {
   instance: string; revision: string; status: Status; tasks: ScheduledTask[]
   resources: Resource[]; emulator: Record<string, Value>
