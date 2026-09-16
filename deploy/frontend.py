@@ -25,7 +25,10 @@ def npm_command():
 
 def source_fingerprint(directory):
     """使用内容摘要识别源码变化，避免 Git 检出时间导致重复构建。"""
-    paths = [directory / 'package.json', directory / 'package-lock.json', directory / 'index.html',
+    paths = [directory / 'package.json', directory / 'package-lock.json',
+             # 三个入口都要进指纹：只改 mobile.html 而正文源码没动时，同样必须重建，
+             # 否则 dist 里那份手机端页面会一直是旧的。
+             directory / 'index.html', directory / 'mobile.html', directory / 'mobile-mockup.html',
              directory / 'vite.config.ts', directory / 'tsconfig.json']
     paths.extend(sorted((directory / 'src').rglob('*')))
     paths.extend(sorted((directory / 'public').rglob('*')))

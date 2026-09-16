@@ -1,0 +1,2136 @@
+/*
+ * 手机端布局层。
+ *
+ * 只被 mobile.html 与 mobile-mockup.html 加载。**这不是一套独立的设计系统** ——
+ * 设计令牌、组件外观、毛玻璃、深浅色全部来自 PC（tokens.css / components.css /
+ * apple.css / forms.css / theme-system.css，在入口里先于本文件加载）。所以页面里的
+ * 卡片、按钮、状态徽标、空态、表单字段直接用 PC 的类名：.panel / .button /
+ * .status / .empty / .loading / .field-row …
+ *
+ * 本文件只负责 PC 完全没有的那部分：
+ *   · 固定的页眉与底部 Tab 栏，以及它们的安全区让位；
+ *   · 整屏自适应（日志页不随内容往下长）；
+ *   · 长列表虚拟化；
+ *   · 手机上必须放大到 44px 的触控目标；
+ *   · 宽表在窄屏改成卡片行。
+ *
+ * 作用域：全部规则限定在 [data-shell='mobile']（挂在 <html> 上），0,1,0 特异性 ——
+ * 刻意不用 :root[data-shell='mobile']（0,2,0），后者会挡住后加载的 /theme.css，
+ * 破坏与 PC 相同的换肤机制。
+ *
+ * 需要覆盖 PC 的既有取值时，一律带 [data-shell='mobile'] 前缀，这样只影响手机端，
+ * 不去动 PC 的表现。
+ */
+
+/* ── 尺寸令牌 + antd-mobile 令牌重映射 ─────────────────────────────── */
+
+[data-shell='mobile'] {
+  /* 间距与尺寸节奏 */
+  --m-page-pad: 16px;
+  --m-card-gap: 10px;
+  --m-tap-min: 44px;
+  /* 列表行高。56px 配 16px 字看着有三行文字那么高，收到 48（仍是 Android 的最小触控尺寸）。 */
+  --m-row-height: 48px;
+  --m-bar-h: 54px;
+  --m-tab-h: 56px;
+  --m-seg-h: 36px;
+
+  /* 圆角收小一档。
+     PC 的 --theme-radius-panel 是 26px、--theme-radius-card 24px —— 那是桌面尺度，
+     在 360dp 上显得过圆、也不像手机系统设置。这里覆盖成 12px/12px。
+     选择器特异性与 theme-system.css 的 :root 相同（0,1,0），靠后加载生效。 */
+  --theme-radius-panel: 12px;
+  --theme-radius-card: 12px;
+  --theme-radius-popover: 12px;
+
+  /* antd-mobile 仍在用的组件（抽屉、弹窗、日期选择、开关、Toast、图片查看）
+     保留，但令牌接到 PC 上，读起来和 PC 是同一套系统。 */
+  --adm-color-primary: var(--accent);
+  --adm-color-background: var(--surface);
+  --adm-color-text: var(--text);
+  --adm-color-weak: var(--muted);
+  --adm-color-border: var(--border);
+  --adm-font-family: var(--theme-font-sans);
+
+  /* 状态徽标的前景与底色。
+     PC 的 .status 取值在手机上不达标：亮色 running --green #248a3d 压在
+     --green-soft #eaf6ed 上只有 3.96:1，updating #997000 压在 #fff3cd 上 3.98:1，
+     error #c9342c 压在 10% 红底上 4.52:1（临界）；而 --theme-warning-soft #fff3cd
+     在 PC 里根本没有深色覆盖，深色下会是一块浅黄底。
+     这里在手机端作用域内把四档的前景与底色都定死，PC 那份不动。
+     数值同源登记在 theme.ts 的 STATUS_COLORS，由 theme.test.ts 断言。 */
+  --m-status-running-fg: #1a7a35;
+  --m-status-running-bg: #eaf6ed;
+  --m-status-stopped-fg: #6e6e73;
+  --m-status-stopped-bg: #f5f5f7;
+  --m-status-error-fg: #b3261e;
+  --m-status-error-bg: #faebea;
+  --m-status-updating-fg: #7a5a00;
+  --m-status-updating-bg: #f5f1e6;
+
+  /* 搜索框：比页面底色深一档的灰。
+     占位文字与放大镜不能用 --muted —— #6e6e73 压在 #e3e3e6 上只有 3.96:1，
+     不达 AA；这里单独给一档更深的灰，5.19:1。 */
+  --m-search-bg: #e3e3e6;
+  --m-search-fg: #5c5c61;
+
+  /* 卡片阴影。PC 的 --theme-shadow-panel 是很轻的 0 8px 32px rgba(29,29,31,.03)，
+     在手机那块小屏上几乎看不出层次，卡片和页面底色糊在一起。这里把扩散收近、
+     再补一层贴近的投影，让「有边框的面」真的浮起来。
+     **只给面，不给按钮** —— 蓝色主按钮自带实底，再加阴影会显脏。 */
+  --m-card-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 1px 2px rgb(29 29 31 / 0.05),
+    0 6px 16px rgb(29 29 31 / 0.07);
+}
+
+[data-shell='mobile'][data-theme='dark'] {
+  --m-status-running-fg: #6cda86;
+  --m-status-running-bg: #223d2a;
+  --m-status-stopped-fg: #aaaab0;
+  --m-status-stopped-bg: #1c1c1e;
+  --m-status-error-fg: #ff8a80;
+  --m-status-error-bg: #3a2e2f;
+  --m-status-updating-fg: #e0b055;
+  --m-status-updating-bg: #37322b;
+
+  /* 深色下页面是 #161618，搜索框要比它亮一档才看得出是输入框 */
+  --m-search-bg: #2a2a2c;
+  --m-search-fg: #aaaab0;
+
+  /* 深色下页面本身就暗，投影要更重才看得出起伏；内高光换成一点白，别用 70%。 */
+  --m-card-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 1px 2px rgb(0 0 0 / 0.4),
+    0 6px 16px rgb(0 0 0 / 0.32);
+}
+
+/* ── antd-mobile 全局层 ─────────────────────────────────────────────── */
+
+[data-shell='mobile'] body {
+  font-size: 14px;
+  /* 避免 WebView 的下拉刷新与内部滚动抢手势 */
+  overscroll-behavior-y: contain;
+}
+
+[data-shell='mobile'] * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 模态遮罩：antd 默认 0.55 黑，达标（清单要求 40–60%）。写死免得被主题带偏。 */
+[data-shell='mobile'] .adm-mask {
+  background: rgb(0 0 0 / 0.55);
+}
+
+/* ── 状态徽标：用 PC 的 .status 类与标记，但换掉不达标的前景/底色 ──── */
+
+[data-shell='mobile'] .status.running {
+  color: var(--m-status-running-fg);
+  background: var(--m-status-running-bg);
+}
+
+[data-shell='mobile'] .status.stopped {
+  color: var(--m-status-stopped-fg);
+  background: var(--m-status-stopped-bg);
+}
+
+[data-shell='mobile'] .status.error {
+  color: var(--m-status-error-fg);
+  background: var(--m-status-error-bg);
+}
+
+[data-shell='mobile'] .status.updating {
+  color: var(--m-status-updating-fg);
+  background: var(--m-status-updating-bg);
+}
+
+[data-shell='mobile'] .status {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+/* ── 常驻栏：与 PC .topbar 同款毛玻璃 ─────────────────────────────────
+ * PC 的顶栏是「透明底 + 一层 .glass-material + --glass-edge 描边 + --glass-shadow」，
+ * 这里照搬同一结构。玻璃本身由 PC 的 .glass-material（background: var(--theme-glass)
+ * + backdrop-filter）提供，深色会自动变成 --glass-tint 的深色值。
+ *
+ * 刻意不引 liquid-glass-react 的折射镜头：那是 174 kB 的 WebGL/SVG 位移层，
+ * 压在一个 fixed 页眉上会拖累中低端安卓的滚动。毛玻璃观感由 CSS 拿到。 */
+
+.m-bar,
+.m-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  background: transparent;
+  color: var(--text);
+  isolation: isolate;
+}
+
+.m-bar {
+  top: 0;
+  height: calc(var(--m-bar-h) + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  border-bottom: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+
+.m-tabbar {
+  bottom: 0;
+  height: calc(var(--m-tab-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+
+/* 玻璃层铺满整条，内容层抬到它上面（与 PC .topbar 的 z-index 约定一致） */
+.m-bar > .glass-material,
+.m-tabbar > .glass-material {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 0;
+}
+
+.m-bar > :not(.glass-material),
+.m-tabbar > :not(.glass-material) {
+  position: relative;
+  z-index: 1;
+}
+
+.m-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--m-bar-h);
+  padding: 0 6px;
+}
+
+.m-bar-heading {
+  flex: 1;
+  min-width: 0;
+  padding-left: 2px;
+}
+
+/* 大标题：手机上没有侧边栏，页名是用户唯一能确认「我在哪」的文字。 */
+.m-bar-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.4px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m-bar-subtitle {
+  margin-top: 1px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m-bar-button {
+  width: var(--m-tap-min);
+  height: var(--m-tap-min);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text);
+  border-radius: 12px;
+}
+
+.m-bar-button:active {
+  background: var(--surface-muted);
+}
+
+.m-bar-button-accent {
+  color: var(--accent);
+}
+
+/* 抽屉顶部的品牌行。不复用 .m-bar —— 那条现在是 position:fixed，
+   放进抽屉会脱离文档流飘到屏幕顶上。这里走同一套玻璃与文字色。 */
+.m-bar-brand {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(12px + env(safe-area-inset-top)) 14px 12px;
+  color: var(--text);
+  border-bottom: 1px solid var(--glass-edge);
+  isolation: isolate;
+}
+
+.m-bar-brand > .glass-material {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 0;
+}
+
+.m-bar-brand > :not(.glass-material) {
+  position: relative;
+  z-index: 1;
+}
+
+.m-bar-brand-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 开发者模式入口就藏在这张 logo 上（连点 10 次），所以它必须是个真按钮：
+   可聚焦、有 accessible name、有 44px 热区。 */
+.m-bar-brand-logo {
+  display: grid;
+  place-items: center;
+  width: var(--m-tap-min);
+  height: var(--m-tap-min);
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  cursor: pointer;
+}
+
+.m-bar-brand-logo:active {
+  background: var(--surface-muted);
+}
+
+.m-bar-brand-logo img {
+  display: block;
+  border-radius: 7px;
+}
+
+/* ── Tab 栏：整宽 5 项 ──────────────────────────────────────────────── */
+
+.m-tabbar .adm-tab-bar-wrap {
+  width: 100%;
+  height: 100%;
+}
+
+.m-tabbar .adm-tab-bar-item {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.m-tabbar .adm-tab-bar-item-active {
+  color: var(--accent);
+}
+
+.m-tabbar .adm-tab-bar-item-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.m-tabbar .adm-tab-bar-item-title {
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+/* ── 分段控件 ────────────────────────────────────────────────────────
+ * PC 的分段控件是「胶囊容器 + 滑块 + 选中项只改字色」，在手机上还多出一圈
+ * 聚焦描边，看着没做完。这里改成**每项各成一块实心块**：选中项铺强调色 + 白字，
+ * 未选中项透明 + 弱化字色；整条装在一个完整的浅色框里。
+ * 外观仍由 PC 的类承担，只是把选中态换成实心块。 */
+
+.m-segmented-bar {
+  /* 紧贴页眉下方，不随内容滚走。sticky 的 top 就是页眉的总高度。 */
+  position: sticky;
+  top: calc(var(--m-bar-h) + env(safe-area-inset-top));
+  z-index: 90;
+  box-sizing: border-box;
+  padding: 8px var(--m-page-pad);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  /* 统计分类有 6 项，窄屏一行放不下（真机 1080px/2.75 ≈ 393dp 上「委托收益」就被切掉了）。
+     分段控件本身不能折行（折行会让滑块定位错乱），所以让这一条**横向滚动**：
+     PC 的 SegmentedControl 是给宽屏做的，手机上多出来的部分用滑动拿。 */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  /* 隐藏横向滚动条：一条小横杠压在页眉下面很显眼 */
+  scrollbar-width: none;
+}
+
+.m-segmented-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* 横向滚动要求内容有自然宽度，否则会被压缩到容器宽度以内、根本滚不动 */
+[data-shell='mobile'] .m-segmented-bar > * {
+  min-width: max-content;
+}
+
+[data-shell='mobile'] .monitor-segmented {
+  width: 100%;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  backdrop-filter: none;
+  /* 单行：6 个类目在 360dp 上放不下，放不下就横向滚动，绝不换行 */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 实心块取代滑块：不再需要那个绝对定位的白色指示器 */
+[data-shell='mobile'] .monitor-segmented .segmented-indicator {
+  display: none;
+}
+
+[data-shell='mobile'] .monitor-segmented button {
+  min-width: 0;
+  height: var(--m-seg-h);
+  min-height: var(--m-seg-h);
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 400;
+  border-radius: 999px;
+  color: var(--muted);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+[data-shell='mobile'] .monitor-segmented button[aria-selected='true'] {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* 点按会给按钮焦点，PC 那条 focus-visible 描边在手机上会变成一圈突兀的蓝环。
+   这里只保留键盘聚焦时的可见性（:focus-visible），指针点按不再描边。 */
+[data-shell='mobile'] .monitor-segmented button:focus {
+  outline: none;
+}
+
+[data-shell='mobile'] .monitor-segmented button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── 分组列表（对齐安卓「设置」的组织方式） ──────────────────────────
+ * 系统设置的样子是：**一组行装在同一个卡片里**，行与行之间用发丝线分隔，
+ * 每组之间留一段空档；每行左边一个圆形图标、中间标签、右边数值与箭头。
+ * 不是「一行一张独立卡片」—— 那样行数一多就碎成一片。
+ */
+
+.m-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--theme-radius-card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+/* 组与组之间留一段空档 */
+.m-list + .m-list,
+.m-section-title + .m-list {
+  margin-top: 0;
+}
+
+.m-list-group {
+  margin-bottom: 20px;
+}
+
+.m-list-group:last-child {
+  margin-bottom: 0;
+}
+
+[data-shell='mobile'] .m-list-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  /* 文字不贴边：横向 16px、纵向 10px（配合 --m-row-height 56px 正好是系统设置的行高） */
+  padding: 10px 16px;
+  min-height: var(--m-row-height);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+/* 行之间用发丝线分隔，最后一行不留线 */
+[data-shell='mobile'] .m-list-row + .m-list-row {
+  border-top: 1px solid var(--border);
+}
+
+[data-shell='mobile'] .m-list-row:active {
+  background: var(--surface-muted);
+}
+
+/* 行首圆形图标（保留类名以便将来需要时复用，但当前各页都不再使用） */
+.m-list-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* 段落标题右侧的计数徽标（圆角灰底小药丸） */
+.m-count-badge {
+  min-width: 26px;
+  height: 22px;
+  padding: 0 8px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 行尾的计数（任务分组右侧的数字）。
+   必须让标签撑开，否则 space-between 会把三样东西摊成「左 / 中 / 右」——
+   数量就飘到行的正中间去了。参考效果里数量是贴着箭头靠右的。 */
+[data-shell='mobile'] .m-nav-row .m-list-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.m-list-count {
+  flex: 0 0 auto;
+  font-size: 15px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.m-list-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/**
+ * 行内的可点主体（调度队列那种「左边正文可点、右边还有动作按钮」的行）。
+ *
+ * 不能用 `all: unset` 去重置 —— 那会把 flex: 1 一起抹掉，正文就不撑开了，
+ * 右侧的动作按钮会紧贴在文字后面而不是靠右。这里逐条重置按钮默认样式。
+ */
+[data-shell='mobile'] .m-list-row-button {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* 行主标题：系统设置是 16px 常规字重，不加粗 */
+.m-list-label {
+  display: block;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.m-list-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.m-list-chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+/* 行尾的图标按钮（调度队列的「立即执行」），保持 44px 触控热区 */
+[data-shell='mobile'] .m-list-action {
+  width: var(--m-tap-min);
+  height: var(--m-tap-min);
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  margin-right: -10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+[data-shell='mobile'] .m-list-action:active {
+  opacity: 0.6;
+}
+
+/* 段落小标题：弱化小字 + 右侧计数徽标 */
+.m-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 4px 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.m-section-title .m-count-badge {
+  margin-left: auto;
+}
+
+/* 居中空态卡：标题 + 说明 */
+.m-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.m-empty-card strong {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.m-empty-card span {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ── 可点整行的导航条（兼容既有的 .m-nav-row 用法） ─────────────────── */
+
+/**
+ * 纵向卡片栈：等宽、带间距。
+ *
+ * 不能省 —— 里面的 PC `.resource-card` / `.panel` 都是 `<button>`/`<section>`，
+ * 少了这一层它们会按内容宽度在行内排布，一列卡片参差不齐。
+ */
+.m-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--m-card-gap);
+}
+
+/** 列表行卡片的最小高度（单行卡片自己成卡时用） */
+.m-entry-card {
+  min-height: var(--m-row-height);
+}
+
+/* ── 正式入口的登录页与连接态 ───────────────────────────────────────
+ * 只有 mobile.html 会用（评审入口直接用假数据，不会进这两个状态）。
+ * 居中一列，表单控件沿用 PC 的 .button / .form-stack，不另画一套。 */
+
+.m-auth {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 24px calc(24px + env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+.m-auth h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+}
+
+.m-auth .form-stack {
+  text-align: left;
+}
+
+/* 密码框必须**看得出来是输入框**。PC 的 tokens.css 给了 input 描边与底色，
+   但登录页不在 .m-shell 里，少了手机端的兜底就变成一片空白（真机上第一次就是这样）。
+   这里显式给尺寸 + 描边 + 底色，顺带满足 44px 触控高度。 */
+[data-shell='mobile'] .m-auth input {
+  width: 100%;
+  height: var(--m-tap-min);
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+}
+
+[data-shell='mobile'] .m-auth input:focus {
+  border-color: var(--accent);
+}
+
+.m-auth-error {
+  margin: 0;
+  color: var(--m-status-error-fg);
+  font-size: 13px;
+}
+
+.m-auth-status {
+  align-items: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.m-auth-status svg {
+  color: var(--muted);
+}
+
+/* ── 有边界的「面」：统一一层轻阴影（按钮除外）───────────────────────
+ * PC 的 --theme-shadow-panel 只有 `0 8px 32px rgba(29,29,31,.03)`，在小屏上几乎
+ * 看不出起伏，卡片和页面底色糊成一片。这里换成手机端的 --m-card-shadow。 */
+
+[data-shell='mobile'] .panel,
+[data-shell='mobile'] .resource-card,
+[data-shell='mobile'] .summary-metrics section,
+[data-shell='mobile'] .instance-card,
+[data-shell='mobile'] .m-nav-row,
+[data-shell='mobile'] .m-list,
+[data-shell='mobile'] .monitor-segmented {
+  box-shadow: var(--m-card-shadow);
+}
+
+/* **按钮不在这张表里** —— .button / .icon-button / .adm-button 自带实底，
+ * 再加投影会显脏。apple.css 也已经把 .button.primary 的 box-shadow 压成 none，
+ * 两处是一致的，改动时别顺手加回来。 */
+
+/* 底部弹出层：投影必须朝上，朝下的那份完全看不见 */
+[data-shell='mobile'] .m-sheet-body {
+  box-shadow: 0 -2px 8px rgb(29 29 31 / 0.06), 0 -14px 36px rgb(29 29 31 / 0.14);
+}
+
+[data-shell='mobile'][data-theme='dark'] .m-sheet-body {
+  box-shadow: 0 -2px 8px rgb(0 0 0 / 0.4), 0 -14px 36px rgb(0 0 0 / 0.45);
+}
+
+/* ── 实例卡：补齐 home.css 在手机端不加载的那部分 ─────────────────────
+ * PC 首页那张卡 = `.panel` + `.instance-card`。`.panel` 只给背景/边框/圆角/阴影，
+ * **一点内边距都没有**，PC 是靠 apple.css 的 `.instance-card {padding: 26px}` 撑开的；
+ * 而 `.instance-card-heading` / `.instance-device` / `.instance-card-footer` 的排布
+ * 全写在 home.css 里，手机端的样式栈不含这个文件。少了下面这段，实例卡会退化成
+ * 「文字图标贴着边框、状态徽标掉到图标下面、ADB127.0.0.1:5555 连成一片」。
+ * 组件测试第 8 区那张预览卡用的是同一套类名，所以补完这里，两边一起变对。 */
+
+[data-shell='mobile'] .instance-card {
+  /* PC 是 26px（窄屏媒体查询里 24px），桌面尺度；手机上按 12px 圆角的节奏收到 16px。
+     这条内边距就是「文字与图标不贴边」的那一条。 */
+  position: relative;
+  padding: 16px;
+}
+
+/* 首页那张卡：黄金比例。宽 315 → 高 315 / 1.618 ≈ 194.7。
+   用 aspect-ratio 而不是写死高度 —— 窗口更窄时整卡等比缩小，比例不变。
+   多出来的那点余量由 .m-instance-open 的 flex 列 + 页脚 margin-top: auto 吸收，
+   所以页脚永远贴着底边，中间不会空出一大块。 */
+[data-shell='mobile'] .m-instance-card {
+  display: flex;
+  flex-direction: column;
+  width: min(315px, 100%);
+  aspect-ratio: 1.618 / 1;
+  margin-inline: auto;
+}
+
+[data-shell='mobile'] .instance-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+[data-shell='mobile'] .m-instance-card .instance-card-heading {
+  /* 图标留在左上角；右上角是徽标，⋯ 在徽标下面 */
+  align-items: flex-start;
+  /* 给 ⋯ 预留出竖直空间：徽标（约 22px）之下还有一个 32px 的 ⋯ 盒子，
+     顶部从内容起点算起共 56px。不预留的话 ⋯ 会压到下面的实例名上。 */
+  min-height: 56px;
+}
+
+/* 状态徽标贴右上角（与图标同一行），不再往下推 */
+[data-shell='mobile'] .m-instance-card .instance-card-heading .status {
+  margin-left: auto;
+}
+
+/* 徽标推到最右。PC 用 justify-content: space-between，这里改用 auto 外边距 ——
+   头部多了一个 ⋯，space-between 会把徽标挤到正中间去。 */
+[data-shell='mobile'] .instance-card-heading .status {
+  margin-left: auto;
+}
+
+[data-shell='mobile'] .home-instance-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #51a9ff, #0071e3);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 4px 12px rgb(0 113 227 / 0.13);
+}
+
+[data-shell='mobile'] .instance-card h3 {
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.3px;
+  margin: 10px 0 6px;
+  overflow-wrap: anywhere;
+}
+
+[data-shell='mobile'] .instance-device {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+[data-shell='mobile'] .instance-device > span:first-child {
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+[data-shell='mobile'] .instance-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 12px;
+}
+
+/* 首页那张卡是定高的（黄金比例），页脚吸底 */
+[data-shell='mobile'] .m-instance-card .instance-card-footer {
+  margin-top: auto;
+}
+
+[data-shell='mobile'] .instance-card-footer > svg {
+  flex: none;
+  box-sizing: content-box;
+  padding: 6px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+}
+
+/* 整卡是一个 <a>：清掉下划线，颜色跟随父级。
+   首页那张卡里它要撑满卡片内容区，才能把页脚用 margin-top: auto 顶到底边。 */
+[data-shell='mobile'] .m-instance-open {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ⋯ 绝对定位在卡片右侧、**状态徽标的下方**，作为 <a> 的兄弟节点 —— 交互元素不能嵌套。
+   视觉 32px，靠 ::after 把触控目标撑到 44px。
+   top / right 让 18px 的图标与上方徽标的右边缘对齐（盒子右侧留 10px、上下各留 7px）。
+   选择器必须连 `.icon-button` 一起写（0,3,0）：下面「触控尺寸」那节有一条同分但更靠后的
+   `.icon-button {width/height: var(--m-tap-min)}`，只写 .m-instance-more 会被它顶回 44px
+   —— 那样 ⋯ 会往下多占 12px，把下面的实例名压住。 */
+[data-shell='mobile'] .icon-button.m-instance-more {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+}
+
+[data-shell='mobile'] .icon-button.m-instance-more::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+/* ── 首页「新建实例」─────────────────────────────────────────────────
+ * 单独占一行、落在「实例 (N)」标题下方。**不再和标题同行** —— 同行时按钮的上沿
+ * 会顶到上面那排统计（「需要处理 0」），两行挤在一起。
+ * PC 的 .button 是 40px 高、0 17px 内边距，摆在手机端那颗 13px 的段落标题旁边太重，
+ * 视觉收到 30px，但**触控目标仍是 44px**：用伪元素把可点区域向外撑开，不占布局。
+ *
+ * 选择器必须连 `.button` 一起写（0,3,0）：下面「触控尺寸」那节有一条
+ * `[data-shell='mobile'] .button {height/min-height: var(--m-tap-min)}`，
+ * 同样是 (0,2,0) 且排在本节之后 —— 只写 .m-home-new 会被它顶回 44px。 */
+
+.m-section-action {
+  display: flex;
+  margin: 0 4px 10px;
+}
+
+[data-shell='mobile'] .button.m-home-new {
+  position: relative;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 4px;
+}
+
+[data-shell='mobile'] .button.m-home-new::after {
+  content: '';
+  position: absolute;
+  inset: -7px -6px;
+}
+
+[data-shell='mobile'] .m-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--m-row-height);
+  /* 卡片圆角收小后，内边距仍要够，文字才不会贴着边框 */
+  padding: 12px 16px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+[data-shell='mobile'] .m-nav-row:active {
+  border-color: var(--accent);
+}
+
+/* ── 隔断 PC 的裸元素样式，别让它漏进 antd-mobile 组件 ────────────────
+ * PC 的 tokens.css 是给 PC 表单写的全局元素规则：
+ *   input/select/textarea { border: 1px solid var(--border); border-radius: 7px;
+ *                           padding: 10px 12px; background: var(--surface) }
+ *   input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px …20% }
+ * 这些规则会作用到 **antd-mobile 组件内部的 input**（搜索框最明显）：组件自己已经
+ * 画了一层输入框，PC 那层再叠上去就成了「框里还有个框」，聚焦时外面还多一圈蓝光。
+ *
+ * 所以：进入 .adm-* 容器内部的裸控件，一律还原成无样式，由 antd 自己那套负责。 */
+
+[data-shell='mobile'] [class^='adm-'] input,
+[data-shell='mobile'] [class*=' adm-'] input,
+[data-shell='mobile'] [class^='adm-'] select,
+[data-shell='mobile'] [class*=' adm-'] select,
+[data-shell='mobile'] [class^='adm-'] textarea,
+[data-shell='mobile'] [class*=' adm-'] textarea {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  min-height: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-shell='mobile'] [class^='adm-'] input:focus,
+[data-shell='mobile'] [class*=' adm-'] input:focus,
+[data-shell='mobile'] [class^='adm-'] textarea:focus,
+[data-shell='mobile'] [class*=' adm-'] textarea:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* ── 搜索框：深灰胶囊 ─────────────────────────────────────────────────
+ * 系统设置的搜索框是：全圆角、比页面底色深一档的灰底、左侧放大镜、46px 高，
+ * **且聚焦时不换底色也不描边** —— antd 默认会把激活态变成白底 + 主色边框。 */
+
+[data-shell='mobile'] .adm-search-bar {
+  --height: 46px;
+  --border-radius: 999px;
+  --background: var(--m-search-bg);
+  --padding-left: 16px;
+  --placeholder-color: var(--m-search-fg);
+  /* antd 的放大镜（.adm-search-bar-input-box-icon）吃 --adm-color-light，
+     默认是 #ccc，压在深灰底上只有 1.25:1；聚焦态还有一条三重类的
+     `.adm-search-bar-active .adm-input.adm-input.adm-input` 把占位符也拉回
+     --adm-color-light。这两条都在和下面那条图标规则同分或更高的特异度上，
+     且在本 chunk 中排在 mobile.css 之后，靠选择器去拼是拼不过的 ——
+     直接在搜索栏作用域内改写这个令牌，让整棵子树继承深灰前景色。 */
+  --adm-color-light: var(--m-search-fg);
+}
+
+[data-shell='mobile'] .adm-search-bar .adm-search-bar-input-box,
+[data-shell='mobile'] .adm-search-bar-active .adm-search-bar-input-box {
+  border: 1px solid transparent;
+  background: var(--m-search-bg);
+}
+
+/* 多带一层 .adm-search-bar-input-box，把特异度从 (0,3,0) 抬到 (0,4,0)，
+   压过 antd 同分但更靠后的那条，font-size 才能落在 20px。 */
+[data-shell='mobile'] .adm-search-bar .adm-search-bar-input-box .adm-search-bar-input-box-icon {
+  color: var(--m-search-fg);
+  font-size: 20px;
+}
+
+[data-shell='mobile'] .adm-search-bar .adm-search-bar-input {
+  padding: 0 12px 0 8px;
+  height: auto;
+}
+
+[data-shell='mobile'] .adm-search-bar .adm-search-bar-input .adm-input-element {
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+/* 独立成条的搜索区（任务页顶部） */
+.m-search-bar {
+  margin-bottom: 16px;
+}
+
+/* ── 布局骨架 ───────────────────────────────────────────────────────── */
+
+.m-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /* 页眉与 Tab 栏都是 fixed，骨架负责让出它们的高度（含安全区）。
+     data-tabs='off' 时不占底部：首页与全屏推入页没有 Tab 栏。 */
+  padding-top: calc(var(--m-bar-h) + env(safe-area-inset-top));
+  padding-bottom: calc(var(--m-tab-h) + env(safe-area-inset-bottom));
+}
+
+.m-shell[data-tabs='off'] {
+  padding-bottom: 0;
+}
+
+/* 整屏自适应：日志页用。页面本身不滚动，由内部区域自己滚，
+   避免 500 行日志把页面一直往下撑。 */
+.m-shell[data-fixed='on'] {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.m-shell[data-fixed='on'] .m-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.m-main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--m-page-pad);
+}
+
+/* ── 资源卡：PC 的毛玻璃外观 + 手机端的两行数值 ───────────────────────
+ * 外观（毛玻璃、描边、圆角）来自 PC 的 .resource-card（theme-system.css）。
+ * 手机端只是把它排成一行：左边「图标 + 资源名 + 采集时间」，右边数值。 */
+
+[data-shell='mobile'] .m-resource-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 68px;
+  margin-bottom: var(--m-card-gap);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+[data-shell='mobile'] .m-resource-row:active {
+  border-color: var(--accent);
+}
+
+[data-shell='mobile'] .m-resource-lead {
+  flex: 1;
+  min-width: 0;
+}
+
+[data-shell='mobile'] .m-resource-row .resource-heading {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 0;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+[data-shell='mobile'] .m-resource-row .resource-image-wrap {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  order: -1;
+}
+
+[data-shell='mobile'] .m-resource-row .resource-foot {
+  border-top: 0;
+  padding-top: 2px;
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+/* 数值两行：主值在最右，细则减小字号排在它下面；整块垂直居中。 */
+[data-shell='mobile'] .m-resource-amount {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+/* 字重压平到 400 —— PC 的 .resource-value 是 650，加粗在手机上显脏，
+   靠更大的字号与右对齐就够了（统计页也是同一套口径）。 */
+[data-shell='mobile'] .m-resource-amount .resource-value {
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+}
+
+[data-shell='mobile'] .m-resource-amount small {
+  margin-left: 0;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+/* 从没采集过的资源：明确显示「—」，不用 0 冒充真实值 */
+[data-shell='mobile'] .m-resource-amount .is-empty {
+  color: var(--muted);
+}
+
+/* ── 触控尺寸：PC 的控件是给鼠标做的，手机上要放大到 44px ───────────── */
+
+[data-shell='mobile'] .button {
+  height: var(--m-tap-min);
+  min-height: var(--m-tap-min);
+  padding: 0 16px;
+  font-size: 13px;
+}
+
+[data-shell='mobile'] .icon-button {
+  width: var(--m-tap-min);
+  height: var(--m-tap-min);
+}
+
+[data-shell='mobile'] .text-button {
+  min-height: var(--m-tap-min);
+}
+
+[data-shell='mobile'] .field-row {
+  padding: 14px var(--m-page-pad);
+  gap: 14px;
+}
+
+[data-shell='mobile'] .field-label {
+  flex: 1 1 40%;
+  min-width: 0;
+}
+
+[data-shell='mobile'] .field-control {
+  flex: 1 1 55%;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 裸控件（PC 的表单元素）要放大到 44px；antd 组件内部的输入框不算，
+   它们的高度由组件自己的 --height 决定，外面再撑一层会把文字挤到图标上。 */
+[data-shell='mobile'] input:not([class*='adm-']),
+[data-shell='mobile'] select:not([class*='adm-']),
+[data-shell='mobile'] textarea:not([class*='adm-']) {
+  min-height: var(--m-tap-min);
+}
+
+/* ── 长列表虚拟化 ────────────────────────────────────────────────────
+ * 500 行日志不能整份挂进 DOM。useVirtualWindow 负责算窗口，
+ * 这里只提供占位与绝对定位的容器。 */
+
+.m-virtual {
+  position: relative;
+  width: 100%;
+}
+
+.m-virtual-window {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.m-virtual-row {
+  box-sizing: border-box;
+}
+
+/* ── 日志页：一整块面板，内部用发丝线分段 ───────────────────────────
+ * 之前是「一个分段框（日志/截图）+ 一张日志卡」两个盒子，看着散。现在三段
+ * （分段条 / 工具行 / 正文）同在一个 `.panel` 里，靠 border-bottom 的发丝线分开，
+ * 圆角由 `.panel` 的 overflow: hidden 裁掉。
+ * 每一段都有自己的内边距 —— 正文直接贴着面板边框会很难读。 */
+
+.m-logcard {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.m-logs-tabs {
+  flex: 0 0 auto;
+  padding: 12px var(--m-page-pad);
+  border-bottom: 1px solid var(--border);
+}
+
+.m-logtoolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  padding: 8px var(--m-page-pad);
+  border-bottom: 1px solid var(--border);
+}
+
+/* 工具行**永不换行**：换行会把「自动滚动」拆成两行、按钮挤成竖排 */
+[data-shell='mobile'] .m-logtoolbar {
+  flex-wrap: nowrap;
+}
+
+.m-log-toggle-label {
+  flex: 0 0 auto;
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+/* 导出 / 清空用图标：文字版在 360dp 上会被挤成「导 / 出」两行 */
+[data-shell='mobile'] .m-log-action {
+  width: var(--m-tap-min);
+  height: var(--m-tap-min);
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+[data-shell='mobile'] .m-log-action:disabled {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+[data-shell='mobile'] .m-log-action:active {
+  opacity: 0.6;
+}
+
+.m-logscroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  /* 与 PC 的 .log-content 同一套等宽字体与字号 */
+  padding: 10px var(--m-page-pad);
+  font-family: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-size: 11px;
+  /* 必须等于 MockupApp 的 LOG_ROW_HEIGHT，否则虚拟化的窗口偏移会累积漂移 */
+  line-height: 18px;
+  color: var(--text);
+}
+
+/* PC 的日志行是 flex + pre-wrap（会折行）。手机端是**定高虚拟化**，折行会让窗口
+   偏移算错、行叠行 —— 所以这里不折行，改成**横竖都能拖**：
+     · 纵向 = 虚拟化滚动本身；
+     · 横向 = 这个 overflow: auto + 下面内容层的 width: max-content。
+   一个字符都不丢。（试过单行省略号：360dp 上时间戳加级别就吃掉 45% 宽度，几乎每行被截断。）
+   `touch-action` 显式声明，免得被父级或 App 宿主的手势策略接管。 */
+[data-shell='mobile'] .m-logscroll {
+  overflow: auto;
+  touch-action: pan-x pan-y;
+}
+
+/* 让行可以比容器宽，横向拖动才有东西可拖。
+   只写 width，**不要 min-width: 100%** —— 容器自己就是 max-content，百分比 min-width
+   的解析依赖容器宽度，Chromium 会当 auto 处理，属于循环依赖，语义不清。 */
+[data-shell='mobile'] .m-logscroll .m-virtual,
+[data-shell='mobile'] .m-logscroll .m-virtual-window {
+  width: max-content;
+}
+
+[data-shell='mobile'] .m-logscroll .m-virtual-window {
+  right: auto;
+}
+
+[data-shell='mobile'] .m-logscroll .log-entry-line {
+  flex-wrap: nowrap;
+  white-space: pre;
+  width: max-content;
+  padding: 0;
+  gap: 6px;
+}
+
+/* PC 给 .log-msg 设了 flex: 1 与 word-break: break-all，两个都会把行压回容器宽度 */
+[data-shell='mobile'] .m-logscroll .log-msg {
+  flex: 0 0 auto;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* PC 是 60px（桌面尺度，够放 CRITICAL）。手机端用 ch 而不是写死 px：
+   一列要正好装下最长的级别名 CRITICAL（8 字符），**时间列才会对齐** ——
+   给窄了 WARNING / CRITICAL 会把时间往右顶，整列看着是歪的。 */
+[data-shell='mobile'] .m-logscroll .log-lvl {
+  min-width: 8ch;
+}
+
+/* 日志空态（清空当前视图之后）：撑满剩下的高度，居中 */
+.m-logscroll > .m-empty-card {
+  margin: 0;
+}
+
+.m-logpreview {
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: var(--m-page-pad);
+}
+
+.m-logpreview img {
+  max-width: 100%;
+  max-height: 46dvh;
+  border-radius: 12px;
+  height: auto;
+  cursor: zoom-in;
+}
+
+/* ── 宽表：手机上改成卡片行，而不是横向撑破布局 ─────────────────────
+ * PC 的 .statistics-table 是真表格，窄屏会溢出；这块是手机端独有的替代。 */
+
+.m-table-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.m-table-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.m-table-row-label {
+  color: var(--muted);
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.m-table-row-value {
+  flex: 0 0 auto;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 卡片管理（PC 的 .resource-settings 结构 + 手机端的弹层） ───────── */
+
+.m-card-manager {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* PC 是两列网格，360dp 上放得下，但卡片会被压窄到放不下标签，改单列 */
+.m-card-editor {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+[data-shell='mobile'] .resource-editor-card {
+  min-height: var(--m-tap-min);
+  /* 触屏上要禁掉浏览器的滚动手势抢占，否则拖动会变成滚页面 */
+  touch-action: none;
+  user-select: none;
+}
+
+[data-shell='mobile'] .resource-editor-card.dragging {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+[data-shell='mobile'] .resource-editor-remove {
+  width: var(--m-tap-min);
+  height: var(--m-tap-min);
+}
+
+.m-card-add-chevron {
+  margin-left: auto;
+}
+
+/* 可选资源：PC 是自适应网格，窄屏给两列 */
+.m-card-picker {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+[data-shell='mobile'] .resource-picker-card {
+  min-height: var(--m-tap-min);
+}
+
+.m-card-manager-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* 底部弹层：PC 的卡片管理嵌在设置面板里，手机端用弹层承载 */
+.m-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.m-sheet-mask {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgb(0 0 0 / 0.55);
+  cursor: pointer;
+}
+
+.m-sheet-body {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-height: 84dvh;
+  overflow-y: auto;
+  padding: var(--m-page-pad);
+  padding-bottom: calc(var(--m-page-pad) + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-top: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── 统计页：一个面板，内部用分隔线分段 ───────────────────────────────
+ * 原先「概览 / 指标 / 图表 / 明细」各是一个独立小盒子，一屏里叠四五个边框，
+ * 视觉噪音很大。PC 的统计页是一个大面板，内部用分隔线分段 —— 手机端照这个来。 */
+
+[data-shell='mobile'] .m-stat-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* 面板内的每一段：统一的内边距 + 上分隔线（第一段没有） */
+.m-stat-section {
+  padding: 14px 16px;
+}
+
+.m-stat-section + .m-stat-section {
+  border-top: 1px solid var(--border);
+}
+
+/* 段内小标题 + 右侧说明 */
+.m-stat-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.m-stat-section-head .m-stat-section-note {
+  margin-left: auto;
+}
+
+/* 主数值行：资源名 + 数值 + 区间变化 */
+.m-stat-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 16px;
+}
+
+.m-stat-title {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.m-stat-value {
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.m-stat-delta {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--accent);
+}
+
+/* 指标组：三列等宽，不加框，只靠留白分组 */
+.m-stat-metrics {
+  display: flex;
+  gap: 12px;
+}
+
+.m-stat-metrics > span {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.m-stat-metrics b {
+  font-weight: 400;
+  font-size: 15px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 统计页里 PC 的 .panel-heading / .stat-metrics 自带加粗，这里一并压平 */
+[data-shell='mobile'] .m-stat-panel .panel-heading h2,
+[data-shell='mobile'] .m-stat-panel strong {
+  font-weight: 400;
+}
+
+/* ── 空态 / 加载态在窄屏的让位 ──────────────────────────────────────── */
+
+[data-shell='mobile'] .empty {
+  min-height: 120px;
+  padding: 24px 16px;
+}
+
+[data-shell='mobile'] .loading {
+  min-height: 120px;
+}
+
+/* ── 调度状态徽标与调度器摘要卡 ───────────────────────────────────────
+ * 「任务与调度器同步」的可见部分：任务行右侧回答「这个任务会不会被跑」，
+ * 摘要卡回答「现在整体跑到哪一步了」。两者都只读 `overview` 的推送，不自己推断。 */
+
+.m-schedule-chip {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: var(--surface-muted);
+}
+
+/* 运行中用绿色：与 PC 的 `.status.running` / `.task-state.running` 同一套语义色 */
+.m-schedule-chip.is-running {
+  color: var(--theme-success);
+  border-color: color-mix(in srgb, var(--theme-success) 35%, var(--border));
+  background: var(--theme-success-soft);
+}
+
+.m-schedule-chip.is-pending {
+  color: var(--text);
+}
+
+/* 未启用整体压暗，与「已启用但还早」区分开 */
+.m-schedule-chip.is-off {
+  opacity: 0.75;
+}
+
+/* 行尾的一组元素（状态徽标 + 计数 + 箭头），必须整体靠右且不被压缩 */
+.m-list-trailing {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.m-scheduler-card {
+  margin: 0 0 var(--m-card-gap);
+  padding: 14px 16px;
+  border-radius: var(--theme-radius-panel);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--m-card-shadow);
+}
+
+.m-scheduler-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.m-scheduler-eyebrow {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.m-scheduler-state {
+  margin-left: auto;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.m-scheduler-state.is-running {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.m-scheduler-state.is-error {
+  color: var(--theme-danger);
+  border-color: var(--theme-danger);
+}
+
+.m-scheduler-counts {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.m-scheduler-counts > span {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.m-scheduler-counts em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.m-scheduler-counts b {
+  font-weight: 400;
+  font-size: 18px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.m-scheduler-empty {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* 总览底部「调度计划 ›」 */
+[data-shell='mobile'] .m-overview-more {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px 4px;
+  font-size: 14px;
+}
+
+/* ── 拉取失败横幅 ─────────────────────────────────────────────────────
+ * 之前 `MobileData.error` 被 set 了却没有任何屏幕渲染，失败时总览只剩标题和齿轮，
+ * 看起来像「这个实例本来就没有资源」。 */
+
+.m-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 var(--m-page-pad) 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--theme-danger);
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.m-error-banner strong {
+  flex: 0 0 auto;
+  font-weight: 600;
+  color: var(--theme-danger);
+}
+
+.m-error-banner span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+/* ── 任务配置页：可读也可写 ───────────────────────────────────────────
+ * 每一行是「左说明 / 右控件」，说明在上、细则在下的字号层级沿用资源卡那套。
+ * 控件一律 ≥44px 触控高度（PC 的控件是给鼠标做的）。 */
+
+[data-shell='mobile'] .m-config-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.m-config-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 16px;
+}
+
+.m-config-row + .m-config-row {
+  border-top: 1px solid var(--border);
+}
+
+/* 多行文本、存储空间、日期时间这三类**单独占一行**：右侧那 55% 宽的控制区
+   装不下它们（日期时间会被切掉秒，多行文本挤成一条细缝）。 */
+.m-config-row.is-multiline,
+.m-config-row.is-stacked {
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 只读行整行压暗，一眼能看出「这行不用改」 */
+.m-config-row[data-readonly='on'] .m-config-label {
+  color: var(--muted);
+}
+
+.m-config-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.m-config-label {
+  display: block;
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.m-config-readonly {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* 说明可能很长（过滤器那种），最多三行，其余截断 */
+.m-config-help {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.m-config-control {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 55%;
+}
+
+.m-config-row.is-multiline .m-config-control,
+.m-config-row.is-stacked .m-config-control {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
+  align-items: stretch;
+}
+
+.m-config-switch {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--m-tap-min);
+}
+
+.m-config-static {
+  font-size: 14px;
+  color: var(--muted);
+  text-align: right;
+  word-break: break-all;
+}
+
+/* 下拉 / 日期这类「点一下弹选择」的入口：整行可点，右侧留箭头 */
+[data-shell='mobile'] .m-config-pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--m-tap-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: right;
+}
+
+[data-shell='mobile'] .m-config-pick span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-shell='mobile'] .m-config-input {
+  width: 100%;
+  min-width: 160px;
+  min-height: var(--m-tap-min);
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  text-align: right;
+}
+
+[data-shell='mobile'] .m-config-row.is-multiline .m-config-input,
+[data-shell='mobile'] .m-config-area {
+  text-align: left;
+}
+
+/* antd-mobile 的 TextArea 自己带一层边框，这里只校正字号与内边距 */
+[data-shell='mobile'] .m-config-area {
+  --font-size: 14px;
+  --color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+/* 等宽的存储空间预览：JSON 缩进对齐才好读 */
+.m-config-storage {
+  max-height: 160px;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  font-family: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text);
+  text-align: left;
+}
+
+/* 提交状态：四态都要看得出区别，失败还要能点重试 */
+.m-config-status {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--muted);
+}
+
+.m-config-status.is-saved {
+  color: var(--theme-success, var(--accent));
+}
+
+.m-config-status.is-error {
+  color: var(--theme-danger);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.m-config-hint {
+  margin: 12px 4px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* 配置页底部的「运行工具」按钮：整行宽，和下一条说明留出气口 */
+[data-shell='mobile'] .button.m-config-run {
+  margin-top: 4px;
+}
+
+/* 分组锚点：配置动辄二十来个字段，没有它只能一路盲滚 */
+.m-group-nav,
+.m-config-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.m-group-nav {
+  margin: 0 0 12px;
+}
+
+[data-shell='mobile'] .m-chip {
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+[data-shell='mobile'] .m-chip.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+[data-shell='mobile'] .m-chip:active {
+  opacity: 0.7;
+}
+
+/* 多选项（multiselect）右对齐排布 */
+.m-config-chips {
+  justify-content: flex-end;
+}
+
+/* ── 统计页的工具行与查询条件 ─────────────────────────────────────────
+ * 条件控件与 PC 的统计页一一对应（resources 给天数、其余给月份、commission 多周期）。 */
+
+.m-stat-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 4px 10px;
+}
+
+.m-stat-category {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+[data-shell='mobile'] .m-stats-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+[data-shell='mobile'] .m-stats-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+[data-shell='mobile'] .m-stats-controls select,
+[data-shell='mobile'] .m-stats-controls input {
+  min-height: 36px;
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+/* 分桶选择夹在系列 chip 与数值行之间，上下各留一点气口 */
+.m-stat-bucket {
+  margin: 12px 0 4px;
+}
+
+/* 面板内的主数值行与指标行不再自带段内边距（它们已经是段的一部分） */
+.m-stat-panel .m-stat-head {
+  padding: 12px 0 0;
+}
+
+.m-stat-panel .m-stat-metrics {
+  margin-top: 12px;
+}
+
+.m-stat-panel .m-stat-head + .m-stat-metrics {
+  margin-top: 10px;
+}
+
+.m-stat-panel .m-stat-metrics + div {
+  margin-top: 12px;
+}
+
+/* 明细表在自己那一段里：标题行已经由 StatsTable 提供，这里不重复内边距 */
+.m-stat-panel .m-stat-table .m-stat-section-head {
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.m-stat-panel .m-stat-table .m-table-toolbar {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.m-stat-panel .m-stat-table .m-table-scroll {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.m-stat-panel .m-stat-table .m-table-pager {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+}
+
+.m-stat-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* 指标组换行版：opsi 有 11 个指标，三列一行装不下 */
+.m-stat-metrics-wrap {
+  flex-wrap: wrap;
+  gap: 12px 16px;
+}
+
+.m-stat-metrics-wrap > span {
+  flex: 1 1 28%;
+}
+
+.m-stat-metrics em {
+  font-style: normal;
+}
+
+.m-stat-metrics small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* 曲线选择：一排 chip，当前那条用强调色 */
+.m-stat-series {
+  justify-content: flex-start;
+  margin-bottom: 4px;
+}
+
+/* ── 统计明细表：横向滚动的真表格 ─────────────────────────────────────
+ * PC 的 .statistics-table 在 360dp 上会被挤扁，这里让表格自己横向滚，
+ * 列宽按内容走 —— 数字列错位比少一列更糟。分页与导出沿用 PC 的 25 行口径。 */
+
+.m-stat-table + .m-stat-table {
+  border-top: 1px solid var(--border);
+}
+
+.m-table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 16px 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+[data-shell='mobile'] .m-table-toolbar input {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+.m-table-pager {
+  justify-content: space-between;
+  padding: 8px 16px 12px;
+}
+
+.m-table-scroll {
+  overflow-x: auto;
+  padding: 0 16px 8px;
+  touch-action: pan-x pan-y;
+}
+
+.m-table-scroll table {
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.m-table-scroll th,
+.m-table-scroll td {
+  padding: 7px 10px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.m-table-scroll th {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.m-table-scroll td {
+  color: var(--text);
+}
+
+/* ── 日志工具栏的级别选择与条数 ─────────────────────────────────────── */
+
+[data-shell='mobile'] .m-log-level {
+  min-height: var(--m-tap-min);
+  /* 原生 select 的箭头是画在盒子里的，宽度给窄了会把「所有级别」截掉（真机上量过） */
+  min-width: 92px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.m-log-count {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* 日志工具栏里的搜索框要能和其它控件同行 */
+[data-shell='mobile'] .m-logtoolbar .adm-search-bar {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 当前实例的卡片：左侧一道强调色，多实例时一眼看出在哪个实例里 */
+[data-shell='mobile'] .m-instance-card[data-current='on'] {
+  border-color: var(--accent);
+}
+
