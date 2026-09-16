@@ -41,7 +41,8 @@ test('旧响应延迟期间连续输入并切页，最终值继续保存', async
   await expect.poll(() => !!release).toBe(true)
   await serial.fill('latest-user-input')
   await expect(serial).toHaveValue('latest-user-input')
-  await page.locator('.primary-nav').getByRole('link', {name: 'testpilot', exact: true}).click()
+  // 侧栏第一个链接是「运行总览」，它的可访问名跟着界面语言走（i18n 重构前是实例名）。
+  await page.locator('.primary-nav').getByRole('link', {name: '运行总览', exact: true}).click()
   release!()
   await page.goto('/#/i/testpilot/task/Alas')
   await expect(serial).toHaveValue('latest-user-input')
