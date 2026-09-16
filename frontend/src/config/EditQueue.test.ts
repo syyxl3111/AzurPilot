@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import { EditQueue } from './EditQueue'
 import { prepareValue } from './editors'
@@ -13,6 +13,16 @@ function deferred() {
   const promise = new Promise<void>((yes, no) => {resolve = yes; reject = no})
   return {promise, resolve, reject}
 }
+/**
+ * 固定界面语言。
+ *
+ * `EditQueue` 的提示文案走 `translateCurrentUi()` → `preferredLanguage()`：测试环境（node）
+ * 没有 localStorage，于是回落到 `detectLanguage()` → `navigator.languages`，也就是**运行这台
+ * 机器的默认语言**。CI 的 runner 是 en-US、开发机常见是 zh-CN，下面两条断言里的中文文案就会
+ * 随机器红/绿 —— 那不是产品缺陷，是测试依赖了环境。这里把语言钉死。
+ */
+beforeAll(() => vi.stubGlobal('navigator', {language: 'zh-CN', languages: ['zh-CN']}))
+afterAll(() => vi.unstubAllGlobals())
 afterEach(() => vi.useRealTimers())
 
 describe('即时配置队列', () => {
