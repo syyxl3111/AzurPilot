@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover 让内容铺到刘海/圆角区域，安全区靠 env(safe-area-inset-*) 让位。 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- 状态栏取色与页面底色一致（PC 的 --bg）：亮色 #f5f5f7，深色 #161618。
+         页眉是半透明毛玻璃，压在 --bg 上，所以状态栏取 --bg 才不会有一条色带。 -->
+    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#161618" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="description" content="AzurPilot 手机端" />
+    <link rel="icon" type="image/svg+xml" href="/azurpilot.svg" />
+    <title>AzurPilot</title>
+    <!--
+      手机端刻意不加载任何第三方脚本与统计（Clarity 只存在于 PC 入口），
+      也不请求外部字体或背景图服务，保证除同源外零网络请求。
+    -->
+  </head>
+  <body><div id="root"></div><script type="module" src="/src/mobile/main.tsx"></script></body>
+</html>

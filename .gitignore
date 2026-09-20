@@ -331,5 +331,15 @@ RTK.md
 frontend/node_modules/
 frontend/test-results/
 frontend/playwright-report/
+# 手机端评审截图：刻意放在 test-results 之外 —— Playwright 每次运行会清空
+# 自己的 outputDir，放在里面会被 PC 端的 E2E 顺手删掉。
+frontend/screenshots/
 frontend/*.tsbuildinfo
 !uv.lock
+
+# config/deploy.yaml 里存着 WebUI 访问密码。config/*.yaml 已被忽略，但带时间戳的
+# 备份（deploy.yaml.bak_20260910_201103）匹配不上上面那条 *.bak 通配，会出现在
+# git status 里 —— 一次 git add -A 就把密码提交上去了。
+config/*.bak_*
+# SQLite 的临时文件同理：config/*.db 已忽略，-shm / -wal 这两个后缀没有。
+config/*.db-*
