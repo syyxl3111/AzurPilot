@@ -30,6 +30,9 @@ type Fixture = (typeof TASK_CONFIG_FIXTURES)[string]
 /**
  * 示意图用的最小 t()：正式入口从 schema.translations 取，这里只覆盖用到的键。
  *
+ * 导出是给 `mockApp.tsx` 的 AppContext 垫片用的 —— PC 的共用组件会通过 `useApp()`
+ * 取 `t`，两处必须是同一份翻译，否则同一个任务名在页眉与列表里会不一样。
+ *
  * 键名与真机一致 —— `instances.list` 的 `server` 是配置里的原始值（`cn_android-29`），
  * 翻译键就是 `Emulator.ServerName.cn_android-29`；写成 `Emulator.ServerName.cn`
  * 只会在示意图里成立，真机上根本命中不了。
@@ -47,7 +50,7 @@ const TRANSLATIONS: Record<string, string> = Object.assign(
 const GROUP_LABELS: Record<string, string> = Object.assign(
   {}, ...Object.values(TASK_CONFIG_FIXTURES).map(fixture => fixture.groupLabels))
 
-function mockTranslate(key: string): string {
+export function mockTranslate(key: string): string {
   if (TRANSLATIONS[key]) return TRANSLATIONS[key]
   if (key.endsWith('._info.name')) {
     const group = key.slice(0, -'._info.name'.length)

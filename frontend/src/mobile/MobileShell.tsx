@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import type { Value } from '../api/types'
 import { writeDevMode } from '../app/devMode'
+import { applyTheme, getThemePreference } from '../app/theme'
 import { aggregatePoints, downloadCsv } from '../components/statisticsData'
 import { CardManager, CardManagerSheet, DEFAULT_RESOURCE_KEYS } from './components/CardManager'
 import { createMobileTranslator, type MobileTranslator } from './i18n'
@@ -83,15 +84,14 @@ function screenFromUrl(): Screen {
  * 正式入口也会这么做（设置页的「清空本地缓存」明说了会清掉外观偏好），所以示意图
  * 跟着持久化 —— 否则一切到深色再点任何链接就弹回浅色，深色根本没评审过。
  *
- * **同时写 PC 的键**：正式入口外面套着 PC 的 `AppProvider`，它自己也维护一套
- * `azurpilot.theme` 并往 `documentElement.dataset.theme` 上写。只写手机端的键，
- * AppProvider 挂载时那次 effect 会把手机端刚设好的深色盖回浅色（子组件 effect
- * 先跑、父组件后跑），于是「深色偏好」在下一次打开时才生效 —— 这类只在
- * 真机上偶发一次的错位最难查，所以两个键一起写。
+ * 外观交给 PC 的 `applyTheme()`（`azurpilot.theme` 就是它负责写的键）：手机端的三档
+ * （浅色 / 深色 / 跟随系统）映射到材质主题的 light / dark。**不能只写
+ * `documentElement.dataset.theme`** —— 上游的主题是「皮肤 CSS + data-theme」两件事，
+ * 只翻属性等于换了标签却没换样式（深色下 `--bg` 仍是亮色）；而 applyTheme 会连皮肤
+ * 一起换，并把偏好写进 PC 的键，避免 AppProvider 挂载时把刚设好的深色盖回去。
  */
 const APPEARANCE_KEY = 'azurpilot.mobile.appearance'
 const LANGUAGE_KEY = 'azurpilot.mobile.language'
-const PC_THEME_KEY = 'azurpilot.theme'
 /** 语言也要写 PC 的键：数据层（AppProvider 的 `t()`）读的是它，见 `initialLanguage`。 */
 const PC_LANGUAGE_KEY = 'azurpilot.language'
 
@@ -349,10 +349,10 @@ export function MobileShell({onLanguageChange, onTaskChange, onInstanceChange, i
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     const apply = () => {
       const next = appearance === 'dark' || (appearance === 'system' && media.matches)
-      document.documentElement.dataset.theme = next ? 'dark' : 'light'
+      /* mobile.css 按这个属性判断明暗（与 PC 的 data-theme 分开：手机端只有明暗两态）。 */
       document.documentElement.dataset.prefersColorScheme = next ? 'dark' : 'light'
-      /* 同步 PC 的键，避免 AppProvider 挂载时把深色盖回去（理由见 PC_THEME_KEY 注释） */
-      remember(PC_THEME_KEY, next ? 'dark' : 'light')
+      /* 皮肤与 data-theme 一起换；持久化（含 PC 的 azurpilot.theme）由 applyTheme 负责。 */
+      void applyTheme({...getThemePreference(), theme: next ? 'dark' : 'light'})
     }
     apply()
     media.addEventListener('change', apply)

@@ -24,7 +24,9 @@
 
 /* ── 尺寸令牌 + antd-mobile 令牌重映射 ─────────────────────────────── */
 
-[data-shell='mobile'] {
+/* 限定在 :root 上提高一档特异性（0,2,0）。**不能靠加载顺序**：主题皮肤是运行时由
+   `applyTheme()` 注入到 <head> 末尾的，比这份样式表更晚，同特异性下会反超。 */
+:root[data-shell='mobile'] {
   /* 间距与尺寸节奏 */
   --m-page-pad: 16px;
   --m-card-gap: 10px;
@@ -37,8 +39,7 @@
 
   /* 圆角收小一档。
      PC 的 --theme-radius-panel 是 26px、--theme-radius-card 24px —— 那是桌面尺度，
-     在 360dp 上显得过圆、也不像手机系统设置。这里覆盖成 12px/12px。
-     选择器特异性与 theme-system.css 的 :root 相同（0,1,0），靠后加载生效。 */
+     在 360dp 上显得过圆、也不像手机系统设置。这里覆盖成 12px/12px。 */
   --theme-radius-panel: 12px;
   --theme-radius-card: 12px;
   --theme-radius-popover: 12px;
@@ -84,7 +85,8 @@
     0 6px 16px rgb(29 29 31 / 0.07);
 }
 
-[data-shell='mobile'][data-theme='dark'] {
+/* 深色覆盖同理：比主题的 :root[data-theme='dark']（0,2,0）再高一档。 */
+:root[data-shell='mobile'][data-theme='dark'] {
   --m-status-running-fg: #6cda86;
   --m-status-running-bg: #223d2a;
   --m-status-stopped-fg: #aaaab0;
