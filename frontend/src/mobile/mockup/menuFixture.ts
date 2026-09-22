@@ -171,7 +171,8 @@ export const MENU_GROUPS: Array<{key: string; name: string; page: string; tasks:
       "OcrBenchmark",
       "AzurLaneUncensored",
       "GameManager",
-      "EmulatorManager"
+      "EmulatorManager",
+      "MeowfficerScore"
     ]
   }
 ]
@@ -271,7 +272,8 @@ export const MENU_TASK_LABELS: Record<string, string> = {
   "OcrBenchmark": "OCR性能测试",
   "AzurLaneUncensored": "反和谐",
   "GameManager": "游戏管理器(未完成)",
-  "EmulatorManager": "模拟器管理器"
+  "EmulatorManager": "模拟器管理器",
+  "MeowfficerScore": "指挥喵评分"
 }
 
 /**
@@ -300,6 +302,7 @@ export const TASK_CONFIG_FIXTURES: Record<string, TaskConfigFixture> = {
       "DailySummary": "每日总结",
       "Optimization": "优化设置",
       "DropRecord": "掉落记录",
+      "Backup": "每日备份",
       "EmulatorManagement": "模拟器管理",
       "Storage": "任务状态"
     },
@@ -776,6 +779,14 @@ export const TASK_CONFIG_FIXTURES: Record<string, TaskConfigFixture> = {
           "type": "input",
           "value": "./screenshots"
         },
+        "RetentionDays": {
+          "type": "input",
+          "value": 0,
+          "validate": [
+            0,
+            3650
+          ]
+        },
         "AzurStatsID": {
           "type": "input",
           "value": null
@@ -806,6 +817,14 @@ export const TASK_CONFIG_FIXTURES: Record<string, TaskConfigFixture> = {
             "save",
             "upload",
             "save_and_upload"
+          ]
+        },
+        "CommissionIncomeScreenshot": {
+          "type": "select",
+          "value": "save",
+          "option": [
+            "do_not",
+            "save"
           ]
         },
         "CombatRecord": {
@@ -853,6 +872,20 @@ export const TASK_CONFIG_FIXTURES: Record<string, TaskConfigFixture> = {
           "value": true
         }
       },
+      "Backup": {
+        "Enable": {
+          "type": "checkbox",
+          "value": true
+        },
+        "KeepDays": {
+          "type": "input",
+          "value": 7,
+          "validate": [
+            1,
+            3650
+          ]
+        }
+      },
       "EmulatorManagement": {
         "ScheduledEmulatorRestart": {
           "type": "checkbox",
@@ -868,6 +901,14 @@ export const TASK_CONFIG_FIXTURES: Record<string, TaskConfigFixture> = {
           "validate": [
             1,
             24
+          ]
+        },
+        "DeepRestartAfterFailures": {
+          "type": "input",
+          "value": 0,
+          "validate": [
+            0,
+            10
           ]
         }
       },
@@ -946,10 +987,12 @@ export const TASK_CONFIG_FIXTURES: Record<string, TaskConfigFixture> = {
       },
       "DropRecord": {
         "SaveFolder": "./screenshots",
+        "RetentionDays": 0,
         "AzurStatsID": null,
         "API": "default",
         "ResearchRecord": "do_not",
         "CommissionRecord": "do_not",
+        "CommissionIncomeScreenshot": "save",
         "CombatRecord": "do_not",
         "OpsiRecord": "upload",
         "MeowfficerBuy": "do_not",
@@ -957,10 +1000,15 @@ export const TASK_CONFIG_FIXTURES: Record<string, TaskConfigFixture> = {
         "TelemetryReport": true,
         "BugReport": true
       },
+      "Backup": {
+        "Enable": true,
+        "KeepDays": 7
+      },
       "EmulatorManagement": {
         "ScheduledEmulatorRestart": false,
         "ForceScheduledRestart": false,
-        "RestartIntervalHours": 4
+        "RestartIntervalHours": 4,
+        "DeepRestartAfterFailures": 0
       },
       "Storage": {
         "Storage": {}
@@ -1259,6 +1307,8 @@ export const TASK_CONFIG_FIXTURES: Record<string, TaskConfigFixture> = {
       "Optimization.WarmupMinutes.help": "预热启动相对任务开始时间的提前量，仅用于尚无实测记录的首次预热。每次预热成功后会自动记录本次实际耗时，之后按『上次实测耗时 + 2 分钟』自动提前，使游戏就绪后只需等待约 2 分钟。",
       "DropRecord.SaveFolder.name": "掉落保存目录",
       "DropRecord.SaveFolder.help": "",
+      "DropRecord.RetentionDays.name": "截图保留天数",
+      "DropRecord.RetentionDays.help": "掉落记录截图超过该天数的自动删除\n0 = 不按天数清理（委托收益截图仍只保留最近 50 张）",
       "DropRecord.AzurStatsID.name": "AzurStat ID",
       "DropRecord.AzurStatsID.help": "上传至 https://azur-stats.lyoko.io 时，声明的客户端 ID\n由随机字符组成，可随意修改",
       "DropRecord.API.name": "上传线路",
@@ -1277,6 +1327,10 @@ export const TASK_CONFIG_FIXTURES: Record<string, TaskConfigFixture> = {
       "DropRecord.CommissionRecord.save": "保存",
       "DropRecord.CommissionRecord.upload": "上传",
       "DropRecord.CommissionRecord.save_and_upload": "保存并上传",
+      "DropRecord.CommissionIncomeScreenshot.name": "委托收益截图",
+      "DropRecord.CommissionIncomeScreenshot.help": "委托结算时保存「获取物品」截图，供统计页「查看截图」使用\n关闭后收益数据仍然记录，只是不再保存图片",
+      "DropRecord.CommissionIncomeScreenshot.do_not": "不保存",
+      "DropRecord.CommissionIncomeScreenshot.save": "保存",
       "DropRecord.CombatRecord.name": "战斗掉落截图",
       "DropRecord.CombatRecord.help": "启用后会放缓结算时的点击速度\n在自律寻敌下不生效",
       "DropRecord.CombatRecord.do_not": "无操作",
@@ -1301,12 +1355,18 @@ export const TASK_CONFIG_FIXTURES: Record<string, TaskConfigFixture> = {
       "DropRecord.TelemetryReport.help": "启用后将定期向服务器匿名上报 CL1 统计数据（战斗次数、明石遇见概率等匿名数据）。ID 生成详见源码，统计信息见 https://alas.nanoda.work/",
       "DropRecord.BugReport.name": "Bug 日志上报",
       "DropRecord.BugReport.help": "启用后将在遇到异常时向服务器匿名上报 Bug 日志以帮助改进。ID 生成详见源码",
+      "Backup.Enable.name": "启用每日备份",
+      "Backup.Enable.help": "关闭后不再生成新的备份，也不会删除已有的历史备份。",
+      "Backup.KeepDays.name": "备份保留天数",
+      "Backup.KeepDays.help": "超过该天数的历史备份会在每次备份完成后自动删除。例如填 7，表示只保留最近 7 天的备份。",
       "EmulatorManagement.ScheduledEmulatorRestart.name": "定时重启模拟器",
       "EmulatorManagement.ScheduledEmulatorRestart.help": "每隔一段时间自动重启模拟器，免得跑久了变卡或漏内存。\n注意：默认是等当前任务跑完才重启。",
       "EmulatorManagement.ForceScheduledRestart.name": "强制定时重启（不等任务）",
       "EmulatorManagement.ForceScheduledRestart.help": "开了后，到点就直接重启模拟器，不等当前任务跑完。\n不过如果当前正在跑重要任务（敏感任务），还是会等它跑完再重启。\n得先开上面的「定时重启模拟器」才管用。默认关。",
       "EmulatorManagement.RestartIntervalHours.name": "重启间隔（小时）",
       "EmulatorManagement.RestartIntervalHours.help": "每隔多少小时自动重启一次模拟器。",
+      "EmulatorManagement.DeepRestartAfterFailures.name": "深度重启：连续失败几次后执行",
+      "EmulatorManagement.DeepRestartAfterFailures.help": "模拟器连不上、连续重启失败达到这个次数后，改成「深度重启」：结束 MuMu 的全部进程（含后台服务和虚拟机）再重新启动。\n用在设备较差、反复重启都起不来的机器上，是最后的兜底手段。\n注意：深度重启会连带结束该 MuMu 的所有实例，多开时其它实例会被中断。\n0 表示禁用（只重启实例，不结束进程）。默认 0。",
       "Storage.Storage.name": "存储空间",
       "Storage.Storage.help": "清除任务内部存储的状态数据"
     }

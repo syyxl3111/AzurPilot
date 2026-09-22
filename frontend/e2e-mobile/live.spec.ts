@@ -254,7 +254,7 @@ test.describe('手机端正式入口（真实数据）', () => {
     await expect(chips.first()).toBeVisible()
     const labels = await chips.allInnerTexts()
     for (const label of labels) {
-      expect(['正在运行', '待运行', '等待中', '未启用'], `未知的调度状态：${label}`).toContain(label)
+      expect(['运行中', '待运行', '等待中', '未启用'], `未知的调度状态：${label}`).toContain(label)
     }
   })
 

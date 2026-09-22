@@ -228,9 +228,9 @@ function SchedulerCard({ui, status, schedule, statusKnown}: {
   </div>
 }
 
-/** 队列里每条任务的「下次运行」文案；正在跑的和 PC 一样只说「正在执行」。 */
+/** 队列里每条任务的「下次运行」文案；正在跑的那条与 PC 的队列标签一致地说「运行中」。 */
 function nextRunOf(task: QueueTask, ui: MobileTranslator): string {
-  if (!task.nextRun) return ui('scheduler.executing')
+  if (!task.nextRun) return ui('scheduler.running')
   return task.nextRun.replace('T', ' ').trim()
 }
 

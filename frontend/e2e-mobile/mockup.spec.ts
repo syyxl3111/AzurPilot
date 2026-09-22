@@ -1392,7 +1392,7 @@ test.describe('手机端示意图', () => {
     /* 实例页那一组「运行中」的任务，在任务页也是「运行中」 */
     await page.goto(url('tasks'))
     await navRow('大世界Plus').click()
-    await expect(navRow('智能调度Plus').locator('.m-schedule-chip')).toHaveText('正在运行')
+    await expect(navRow('智能调度Plus').locator('.m-schedule-chip')).toHaveText('运行中')
   })
 
   test('图标按钮都有无障碍名，且结构图标不是 emoji', async ({page}) => {

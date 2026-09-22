@@ -16,7 +16,7 @@ import { useCallback, useMemo, useState, useSyncExternalStore, type ReactNode } 
 import type { Instance } from '../../api/types'
 import { AppContext, type AppContextValue } from '../../app/context'
 import { readDevMode, writeDevMode } from '../../app/devMode'
-import { applyTheme, getThemePreference, subscribeTheme, type CustomPalette } from '../../app/theme'
+import { applyTheme, getThemePreference, subscribeTheme, type CompactRailSide, type CompactRailWidth, type CustomPalette } from '../../app/theme'
 import { translateUi, type Language, type UiTranslator } from '../../i18n'
 import { mockInstances } from './data'
 import { mockTranslate } from './mockDataSource'
@@ -33,7 +33,7 @@ function initialLanguage(): Language {
 }
 
 export function MockAppProvider({children}: {children: ReactNode}) {
-  const {theme, palette, colorMode, resolvedMode, customPalettes} = useSyncExternalStore(subscribeTheme, getThemePreference)
+  const {theme, palette, colorMode, resolvedMode, customPalettes, compactRailSide, compactRailWidth} = useSyncExternalStore(subscribeTheme, getThemePreference)
   const [language, setLanguageState] = useState<Language>(initialLanguage)
   const [previewEnabled, setPreviewEnabled] = useState(false)
   const [devMode, setDevModeState] = useState(readDevMode)
@@ -46,6 +46,13 @@ export function MockAppProvider({children}: {children: ReactNode}) {
   }, [])
   const setColorMode = useCallback((next: AppContextValue['colorMode']) => {
     void applyTheme({...getThemePreference(), colorMode: next})
+  }, [])
+  /* PC 的紧凑布局开关也在主题偏好里；手机端不用它，但 AppContextValue 要求字段齐全。 */
+  const setCompactRailSide = useCallback((side: CompactRailSide) => {
+    void applyTheme({...getThemePreference(), compactRailSide: side})
+  }, [])
+  const setCompactRailWidth = useCallback((width: CompactRailWidth) => {
+    void applyTheme({...getThemePreference(), compactRailWidth: width})
   }, [])
   const saveCustomPalette = useCallback((item: CustomPalette) => {
     const current = getThemePreference()
@@ -91,10 +98,12 @@ export function MockAppProvider({children}: {children: ReactNode}) {
     palette, setPalette,
     colorMode, resolvedMode, setColorMode,
     customPalettes, saveCustomPalette, deleteCustomPalette,
+    compactRailSide, setCompactRailSide, compactRailWidth, setCompactRailWidth,
     language, setLanguage,
   }), [
     refresh, t, ui, notify, previewEnabled, devMode, setDevMode, theme, setTheme, palette, setPalette,
     colorMode, resolvedMode, setColorMode, customPalettes, saveCustomPalette, deleteCustomPalette,
+    compactRailSide, setCompactRailSide, compactRailWidth, setCompactRailWidth,
     language, setLanguage,
   ])
 
