@@ -1,0 +1,185 @@
+/*
+ * 组件测试页在窄屏上的让位。
+ *
+ * PC 的 dev.css 是给 ≥900px 的桌面写的：多列网格（repeat(3…)、minmax(260px…)）、
+ * 左右分栏的效果实验室、宽表格。这些在 360dp 上会横向撑破，所以这里只做一件事 ——
+ * 把多列布局收成一列，并保证触控目标够大。外观（颜色、间距、圆角、阴影）一律沿用
+ * PC 的 dev.css，不重画。
+ *
+ * 选择器全部挂在 .m-dev-* 或 .m-table-* 上（DevPlayground 自己加的类），
+ * 不去覆盖 PC 的原始类，避免影响电脑端。
+ */
+
+/* 多列网格 → 单列 */
+.m-dev-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+/* 简介条：PC 是左右分栏，窄屏改上下 */
+.m-dev-intro {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 16px !important;
+  margin-bottom: 14px !important;
+}
+
+.m-dev-intro-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* 视觉效果实验室：PC 是 1.35fr / 0.65fr 两栏 */
+.m-dev-lab {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 16px !important;
+  padding: 16px !important;
+}
+
+.m-dev-lab .dev-effect-stage {
+  min-height: 220px;
+}
+
+.m-dev-lab .dev-effect-controls label {
+  min-height: var(--m-tap-min);
+}
+
+.m-dev-presets {
+  flex-wrap: nowrap !important;
+  overflow-x: auto;
+  padding: 12px 16px !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.m-dev-presets .dev-blur-preset-wrap {
+  flex: 0 0 auto;
+}
+
+/* 控制块：PC 是左标签右控件，窄屏改上下 */
+.m-dev-block {
+  flex-direction: column;
+  align-items: stretch !important;
+  gap: 12px !important;
+  padding: 16px !important;
+}
+
+.m-dev-block .dev-control-label {
+  min-width: 0 !important;
+}
+
+.m-dev-block .dev-button-row,
+.m-dev-block .dev-inline-controls {
+  justify-content: flex-start !important;
+}
+
+/* 布局分区：三个预览块竖排 */
+.m-dev-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.m-dev-cell {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 表单：PC 的 .field-row 在窄屏会把标签和控件挤在一起 */
+.m-dev-grid .field-row,
+.m-dev-block .field-row {
+  flex-wrap: wrap;
+}
+
+/* 开关/多选：PC 用的是自绘控件，这里用原生 checkbox + 触控尺寸 */
+.m-dev-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--m-tap-min);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.m-dev-switch input {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  accent-color: var(--accent);
+}
+
+/* 对比度自查表 */
+.m-dev-audit {
+  margin-top: 12px;
+}
+
+.m-dev-audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.m-dev-audit-table td {
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.m-dev-audit-pair {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.m-dev-audit-table td:last-child {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.m-dev-pass {
+  color: var(--green);
+}
+
+.m-dev-fail {
+  color: var(--red);
+  font-weight: 700;
+}
+
+/* 数据表格的窄屏替代 */
+.m-dev-cardtable {
+  padding: 16px;
+}
+
+.m-dev-cardtable .m-table-row {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.m-dev-cardtable .m-table-row:last-child {
+  border-bottom: 0;
+}
+
+.m-dev-cardtable .m-table-row-head {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* 滚动区域样例 */
+.m-dev-scroll {
+  margin: 0 16px 16px !important;
+}
+
+.m-dev-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 4px 4px;
+  font-size: 12px;
+}

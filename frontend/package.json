@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:mock": "playwright test --config playwright.mock.config.ts",
+    "test:e2e:mobile": "playwright test --config playwright.mockup.config.ts",
+    "test:e2e:mobile:live": "playwright test --config playwright.live.config.ts",
     "preview": "vite preview --host 127.0.0.1"
   },
   "engines": {
@@ -24,6 +26,7 @@
     "@codemirror/state": "^6.7.4",
     "@codemirror/view": "^6.43.11",
     "@lezer/highlight": "^1.2.3",
+    "antd-mobile": "5.43.0",
     "echarts": "6.1.0",
     "liquid-glass-react": "1.1.1",
     "lucide-react": "1.45.0",
